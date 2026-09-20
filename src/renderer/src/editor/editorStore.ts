@@ -39,6 +39,7 @@ export interface EditorState {
   past: HistoryEntry[]
   future: HistoryEntry[]
   loadPage: (pageId: string) => Promise<void>
+  reset: () => void
   flush: () => Promise<void>
   setActiveBlock: (id: string | null) => void
   requestFocus: (blockId: string, caret?: number) => void
@@ -177,6 +178,24 @@ export const useEditorStore = create<EditorState>((set, get) => {
         () => performLoad(pageId)
       )
       return loadQueue
+    },
+
+    reset: () => {
+      clearTimeout(persistTimer)
+      persisted = new Map()
+      persistedPageId = null
+      lastTextEdit = null
+      set({
+        pageId: null,
+        blocks: [],
+        loading: false,
+        activeBlockId: null,
+        focusRequest: null,
+        selectedIds: [],
+        selectionAnchor: null,
+        past: [],
+        future: []
+      })
     },
 
     flush: () => {

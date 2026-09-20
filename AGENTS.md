@@ -23,7 +23,7 @@ docker compose down                                # parar (los volúmenes persi
 - E2E (Playwright, headless, sin Electron): sirve solo el renderer en el contenedor y lanza los runners desde el host (usan el Chromium cacheado en `~/.npm/_npx`):
   ```bash
   docker compose run -d --rm --name synapse-e2e dev npx vite --config tests/vite.e2e.config.ts
-  node e2e/phase3.e2e.cjs && node e2e/phase4.e2e.cjs   # 42 y 53 checks
+  node e2e/phase3.e2e.cjs && node e2e/phase4.e2e.cjs && node e2e/phase5.e2e.cjs   # 42, 53 y 37 checks
   docker stop synapse-e2e
   ```
 
@@ -77,7 +77,13 @@ docker compose down                                # parar (los volúmenes persi
    - Nota: el placeholder del drag desplaza las filas ~6 px, así que el destino de soltado debe superar el punto medio ya desplazado de la fila.
    - Nota: los saltos de línea se representan como un `<div>` por línea (no como `\n` dentro de un nodo de texto: Chromium teclea antes del salto); `caret.ts` expone `readPlainText`/`writePlainText`/`insertPlainText` para leer y escribir ese DOM. Los divisores se saltan al elegir foco y al fusionar (`nearestTextualBlock`).
    - Tests: 115 unit (transforms + store + commands + repos) y 53 checks E2E (`e2e/phase4.e2e.cjs`, mismos comandos que la fase 3). Suites adversariales de regresión: `e2e/adv-phase4.e2e.cjs` (125 checks) y `e2e/adv-selection.e2e.cjs` (selección/reemplazo).
-5. **Páginas** — sidebar con árbol, crear/renombrar/borrar, breadcrumbs, iconos
+5. **Páginas** ✅ — sidebar en árbol, crear (raíz/subpágina), renombrar, borrar con confirmación, breadcrumbs e iconos
+   - `store/pageTree.ts`: puro (`buildPageTree`, `flattenPages`, `pageAncestors`, `collectDescendantIds`, `nextPageAfterDelete`); huérfanas y ciclos se tratan como raíces.
+   - `store/pagesStore.ts`: `createPage(parentId)`, `deletePage`, `setPageIcon`, `expandedIds`/`toggleExpanded`; el rename debounced usa un timer por página (`renameTimers`) para no cancelar renames pendientes de otras. Al borrar la página activa hace `editorStore.flush()` y luego `reset()` (para no intentar updates de bloques ya borrados) y elige reemplazo con `nextPageAfterDelete` (padre → anterior visible → siguiente); si no queda ninguna, crea una por defecto.
+   - `ui/Sidebar.tsx` (árbol recursivo, expandir/colapsar, rename inline, acciones en hover), `ui/PageMenu.tsx`, `ui/Breadcrumbs.tsx`, `ui/IconPicker.tsx` + `ui/emojis.ts`, `ui/ConfirmDialog.tsx` y `ui/MenuItem.tsx` (compartido con `BlockMenu`).
+   - Sin drag & drop de páginas (el repo ya soporta `move` para más adelante); los iconos son un set curado de emojis sin dependencias.
+   - Nota: los emojis usan `assets/fonts/NotoColorEmoji.ttf` (Noto Color Emoji, OFL) empaquetada vía `@font-face` en `main.css` con `unicode-range` (los contenedores Linux no traen fuente de emojis; el rango evita que la fuente afecte a dígitos/texto latino).
+   - Tests: 139 unit (añadidos `tests/pageTree.test.ts` y `tests/pagesStore.test.ts`, con 2 de regresión del debounce de rename) y 37 checks E2E (`e2e/phase5.e2e.cjs`, mismos comandos que la fase 3).
 6. **Búsqueda y pulido** — Ctrl+K, theme, empaquetado con electron-builder
 7. **Futuro** (post-MVP) — rich text inline (segmentos con marcas), tablas, gráficas, export MD, sync
 
@@ -109,8 +115,8 @@ synapse/
 
 - **MCP de Playwright**: sí funciona en esta máquina vía wrapper (`~/.config/opencode/bin/playwright-mcp.sh`, Chromium bundled en headless, sin Chrome del sistema). Ideal para explorar/depurar; para regresión usar los runners Node, que son deterministas.
 - **Escritura del MCP**: screenshots/snapshots solo dentro del workspace (`.playwright-mcp/` por defecto); para `/tmp/opencode` usar los runners Node (`page.screenshot`).
-- **Hooks E2E en el DOM**: `[data-row-id]`, `[data-block-type]`, `[data-selected]`, `[data-checked]`, `[data-block-id]` (editable), `[data-todo-checkbox]`, `[data-block-handle]`, `[data-block-menu]`, `[data-menu-action]`, `[data-slash-menu]`, `[data-slash-item]`, `[data-drop-placeholder]`.
+- **Hooks E2E en el DOM**: `[data-row-id]`, `[data-block-type]`, `[data-selected]`, `[data-checked]`, `[data-block-id]` (editable), `[data-todo-checkbox]`, `[data-block-handle]`, `[data-block-menu]`, `[data-menu-action]`, `[data-slash-menu]`, `[data-slash-item]`, `[data-drop-placeholder]`; páginas: `[data-page-id]`, `[data-page-depth]`, `[data-page-title]`, `[data-page-toggle]` (`data-expanded`), `[data-page-icon]`, `[data-page-action]`, `[data-page-rename]`, `[data-page-menu]`, `[data-breadcrumb]`, `[data-breadcrumb-current]`, `[data-icon-button]`, `[data-icon-picker]`, `[data-icon-option]`, `[data-icon-remove]`, `[data-confirm-dialog]`, `[data-confirm-accept]`, `[data-confirm-cancel]`.
 - **Lectura de texto en E2E**: el contenido usa un `<div>` por línea, así que hay que unir los hijos directos con `\n` (`:scope > div`) en vez de usar `textContent` a secas.
-- **Mock IPC**: `e2e/mock-api.js` expone `window.__mockState()`, `window.__mockReset()` y `window.__calls`; persiste en `localStorage` bajo `__synapse_e2e_mock__` (sobrevive a `reload()`), así que se siembran bloques escribiendo esa clave y recargando (ver helper `seed()` en `e2e/phase4.e2e.cjs`).
+- **Mock IPC**: `e2e/mock-api.js` expone `window.__mockState()`, `window.__mockReset()` y `window.__calls`; persiste en `localStorage` bajo `__synapse_e2e_mock__` (sobrevive a `reload()`), así que se siembran páginas/bloques escribiendo esa clave y recargando (ver helper `seed()` en `e2e/phase4.e2e.cjs` y `e2e/phase5.e2e.cjs`). El mock de páginas replica el repo: `remove` en cascada (hijos + bloques), `move` real, ids únicos e `position` por padre.
 - **Puerto**: el servidor E2E de `tests/vite.e2e.config.ts` usa el 5174 (el dev normal usa 5173).
 - **Suites adversariales** (mismos requisitos que las oficiales): `node e2e/adv-phase4.e2e.cjs` (125 checks) y `node e2e/adv-selection.e2e.cjs` (selección/reemplazo; sus 3 únicos fallos son el caso latente de selección DOM multi-bloque, no reproducible por UI).

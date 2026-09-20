@@ -50,36 +50,82 @@
   window.api = {
     versions: { electron: 'test', node: 'test' },
     pages: {
-      list: async () => pages.map((p) => ({ ...p })),
+      list: async () =>
+        [...pages]
+          .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
+          .map((p) => ({ ...p })),
       get: async (id) => pages.find((p) => p.id === id) ?? null,
       create: async (input = {}) => {
+        const parentId = input.parentId ?? null
+        const maxId = pages.reduce(
+          (max, p) => Math.max(max, parseInt(p.id.replace(/^\D+/, ''), 10) || 0),
+          0
+        )
         const p = {
-          id: 'p' + (pages.length + 1),
+          id: 'p' + (maxId + 1),
           title: input.title ?? '',
-          parentId: input.parentId ?? null,
+          parentId,
           icon: null,
-          position: pages.length,
+          position: pages.filter((x) => x.parentId === parentId).length,
           createdAt: Date.now(),
           updatedAt: Date.now()
         }
         pages.push(p)
+        calls.push(['page-create', p.id, parentId])
         persist()
         return { ...p }
       },
       rename: async (id, title) => {
         const p = pages.find((x) => x.id === id)
         p.title = title
+        calls.push(['page-rename', id, title])
         persist()
         return { ...p }
       },
       setIcon: async (id, icon) => {
         const p = pages.find((x) => x.id === id)
         p.icon = icon
+        calls.push(['page-set-icon', id, icon])
         persist()
         return { ...p }
       },
-      move: async () => pages[0],
-      remove: async () => {}
+      move: async (id, input) => {
+        const p = pages.find((x) => x.id === id)
+        if (!p) return null
+        p.parentId = input.parentId
+        const siblings = pages
+          .filter((x) => x.parentId === p.parentId && x.id !== id)
+          .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
+        const index = Math.max(0, Math.min(input.position, siblings.length))
+        siblings.splice(index, 0, p)
+        siblings.forEach((x, i) => {
+          x.position = i
+        })
+        calls.push(['page-move', id, input.parentId, index])
+        persist()
+        return { ...p }
+      },
+      remove: async (id) => {
+        const doomed = new Set([id])
+        let added = true
+        while (added) {
+          added = false
+          for (const p of pages) {
+            if (p.parentId && doomed.has(p.parentId) && !doomed.has(p.id)) {
+              doomed.add(p.id)
+              added = true
+            }
+          }
+        }
+        for (let i = pages.length - 1; i >= 0; i--) {
+          if (doomed.has(pages[i].id)) pages.splice(i, 1)
+        }
+        for (let i = blocks.length - 1; i >= 0; i--) {
+          if (doomed.has(blocks[i].pageId)) blocks.splice(i, 1)
+        }
+        calls.push(['page-remove', id, [...doomed]])
+        persist()
+      }
     },
     blocks: {
       list: async (pageId) => {
