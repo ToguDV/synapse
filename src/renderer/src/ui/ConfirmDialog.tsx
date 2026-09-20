@@ -40,17 +40,17 @@ export function ConfirmDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-xl border border-neutral-700 bg-neutral-900 p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-xl border border-border-strong bg-surface p-5 shadow-2xl"
       >
-        <h2 className="text-base font-semibold text-neutral-100">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-neutral-400">{message}</p>
+        <h2 className="text-base font-semibold text-ink">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             ref={cancelRef}
             type="button"
             data-confirm-cancel
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-neutral-100"
+            className="rounded-md px-3 py-1.5 text-sm text-ink-soft transition hover:bg-hover hover:text-ink"
           >
             Cancelar
           </button>

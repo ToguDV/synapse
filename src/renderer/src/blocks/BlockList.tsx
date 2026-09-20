@@ -254,7 +254,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   const placeholder = drag ? (
     <div
       data-drop-placeholder
-      className="pointer-events-none my-0.5 h-0.5 rounded-full bg-blue-500"
+      className="pointer-events-none my-0.5 h-0.5 rounded-full bg-accent"
       style={{ marginLeft: drag.indent * INDENT_STEP_PX }}
     />
   ) : null
@@ -263,7 +263,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   return (
     <div ref={rootRef} className="mt-4 flex flex-col pb-24" onKeyDown={handleShortcuts}>
       {loading ? (
-        <p className="text-sm text-neutral-600">Cargando bloques…</p>
+        <p className="text-sm text-faintest">Cargando bloques…</p>
       ) : (
         blocks.map((block, index) => (
           <Fragment key={block.id}>

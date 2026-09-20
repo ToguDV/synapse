@@ -29,6 +29,10 @@ const api: Api = {
   },
   search: {
     query: (term, limit) => ipcRenderer.invoke('search:query', { term, limit })
+  },
+  settings: {
+    get: (key) => ipcRenderer.invoke('settings:get', key),
+    set: (key, value) => ipcRenderer.invoke('settings:set', { key, value })
   }
 }
 

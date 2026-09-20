@@ -53,7 +53,7 @@ export function PageMenu({
       ref={ref}
       data-page-menu={pageId}
       style={style}
-      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
+      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
     >
       <MenuItem
         action="rename"
@@ -82,7 +82,7 @@ export function PageMenu({
           onClose()
         }}
       />
-      <div className="my-1 border-t border-neutral-800" />
+      <div className="my-1 border-t border-border" />
       <MenuItem
         action="delete"
         icon="⌫"

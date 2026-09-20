@@ -101,4 +101,8 @@ export interface Api {
   search: {
     query: (term: string, limit?: number) => Promise<SearchResult[]>
   }
+  settings: {
+    get: (key: string) => Promise<string | null>
+    set: (key: string, value: string) => Promise<void>
+  }
 }

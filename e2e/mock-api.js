@@ -24,14 +24,16 @@
               updatedAt: 1
             }
           ],
-          blocks: []
+          blocks: [],
+          settings: {}
         }
 
   const pages = seed.pages
   const blocks = seed.blocks
+  const settings = seed.settings ?? {}
   const calls = []
   window.__calls = calls
-  window.__mockState = () => JSON.parse(JSON.stringify({ pages, blocks, calls }))
+  window.__mockState = () => JSON.parse(JSON.stringify({ pages, blocks, settings, calls }))
   window.__mockReset = () => {
     try {
       localStorage.removeItem(KEY)
@@ -41,7 +43,7 @@
   }
   const persist = () => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ pages, blocks }))
+      localStorage.setItem(KEY, JSON.stringify({ pages, blocks, settings }))
     } catch {
       /* ignore */
     }
@@ -218,6 +220,17 @@
             updatedAt: b.updatedAt
           }))
         return [...pageHits, ...blockHits]
+      }
+    },
+    settings: {
+      get: async (key) => {
+        calls.push(['settings-get', key])
+        return Object.prototype.hasOwnProperty.call(settings, key) ? settings[key] : null
+      },
+      set: async (key, value) => {
+        calls.push(['settings-set', key, value])
+        settings[key] = value
+        persist()
       }
     }
   }

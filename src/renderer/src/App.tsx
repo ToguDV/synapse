@@ -3,6 +3,7 @@ import type { SearchResult } from '../../shared/types'
 import type { RectAnchor } from './editor/types'
 import { useEditorStore } from './editor/editorStore'
 import { usePagesStore } from './store/pagesStore'
+import { useThemeStore } from './store/themeStore'
 import { Sidebar } from './ui/Sidebar'
 import { BlockList } from './blocks/BlockList'
 import { Breadcrumbs } from './ui/Breadcrumbs'
@@ -32,6 +33,7 @@ function titleMeasurer(el: HTMLElement, text: string): (size: number) => number 
 function App() {
   const ready = usePagesStore((state) => state.ready)
   const initialize = usePagesStore((state) => state.initialize)
+  const initializeTheme = useThemeStore((state) => state.initialize)
   const pages = usePagesStore((state) => state.pages)
   const activePageId = usePagesStore((state) => state.activePageId)
   const selectPage = usePagesStore((state) => state.selectPage)
@@ -48,6 +50,10 @@ function App() {
   useEffect(() => {
     void initialize()
   }, [initialize])
+
+  useEffect(() => {
+    void initializeTheme()
+  }, [initializeTheme])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -102,11 +108,11 @@ function App() {
   }, [syncTitle, ready, activePageId])
 
   return (
-    <div className="flex h-screen bg-neutral-900 text-neutral-100">
+    <div className="flex h-screen bg-canvas text-ink">
       <Sidebar onOpenSearch={() => setSearchOpen(true)} />
       <main className="flex flex-1 flex-col overflow-y-auto">
         {!ready || !activePage ? (
-          <p className="mt-24 self-center text-sm text-neutral-500">Cargando…</p>
+          <p className="mt-24 self-center text-sm text-faint">Cargando…</p>
         ) : (
           <div className="w-full max-w-2xl self-center px-8 py-16">
             <Breadcrumbs pageId={activePage.id} />
@@ -120,7 +126,7 @@ function App() {
                 style={{
                   marginTop: titleIconOffset(titleSize, iconButtonRef.current?.offsetHeight ?? 48)
                 }}
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-3xl transition hover:bg-neutral-800 ${
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-3xl transition hover:bg-hover ${
                   activePage.icon ? '' : 'opacity-40 group-hover:opacity-100'
                 }`}
               >
@@ -151,7 +157,7 @@ function App() {
                   }
                 }}
                 style={{ fontSize: `${titleSize}px`, lineHeight: `${titleLineHeight(titleSize)}px` }}
-                className="w-full resize-none overflow-hidden break-words bg-transparent font-bold tracking-tight outline-none placeholder:text-neutral-700"
+                className="w-full resize-none overflow-hidden break-words bg-transparent font-bold tracking-tight outline-none placeholder:text-faintest"
               />
             </div>
             <BlockList pageId={activePage.id} />

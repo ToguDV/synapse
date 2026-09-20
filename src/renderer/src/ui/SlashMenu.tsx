@@ -88,10 +88,10 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
       ref={listRef}
       data-slash-menu
       style={style}
-      className="fixed z-50 w-72 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
+      className="fixed z-50 w-72 overflow-y-auto rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
     >
       {commands.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-neutral-500">Sin resultados</p>
+        <p className="px-3 py-2 text-sm text-faint">Sin resultados</p>
       ) : (
         commands.map((command, index) => (
           <button
@@ -99,19 +99,20 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
             type="button"
             data-slash-item={command.type}
             data-slash-index={index}
+            data-active={index === activeIndex}
             onMouseEnter={() => setActiveIndex(index)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onSelect(command.type)}
             className={`flex w-full items-center gap-3 px-2 py-1.5 text-left transition ${
-              index === activeIndex ? 'bg-neutral-800' : 'hover:bg-neutral-800/60'
+              index === activeIndex ? 'bg-hover' : 'hover:bg-hover/60'
             }`}
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-neutral-700 bg-neutral-950 text-xs text-neutral-300">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border-strong bg-panel text-xs text-ink-soft">
               {command.icon}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm text-neutral-100">{command.label}</span>
-              <span className="truncate text-xs text-neutral-500">{command.description}</span>
+              <span className="truncate text-sm text-ink">{command.label}</span>
+              <span className="truncate text-xs text-faint">{command.description}</span>
             </span>
           </button>
         ))

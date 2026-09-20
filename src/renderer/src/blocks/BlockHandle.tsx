@@ -12,7 +12,7 @@ export function BlockHandle({ visible, onPointerDown }: BlockHandleProps) {
       data-block-handle
       aria-label="Opciones de bloque"
       onPointerDown={onPointerDown}
-      className={`absolute -left-7 top-1 flex h-6 w-6 cursor-grab items-center justify-center rounded text-neutral-500 transition hover:bg-neutral-800 hover:text-neutral-200 active:cursor-grabbing ${
+      className={`absolute -left-7 top-1 flex h-6 w-6 cursor-grab items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink-soft active:cursor-grabbing ${
         visible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
       }`}
     >

@@ -153,7 +153,7 @@ export function BlockRow({
 
   let prefix: ReactNode = null
   if (block.type === 'bullet') {
-    prefix = <span className="select-none pt-0.5 text-neutral-500">•</span>
+    prefix = <span className="select-none pt-0.5 text-faint">•</span>
   } else if (block.type === 'todo') {
     prefix = (
       <button
@@ -169,8 +169,8 @@ export function BlockRow({
         onClick={() => toggleChecked(block.id)}
         className={`mt-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] leading-none transition ${
           checked
-            ? 'border-blue-500 bg-blue-500 text-white'
-            : 'border-neutral-600 hover:border-neutral-400'
+            ? 'border-accent bg-accent text-white'
+            : 'border-faint hover:border-muted'
         }`}
       >
         {checked ? '✓' : ''}
@@ -182,7 +182,7 @@ export function BlockRow({
     <div className="relative min-w-0 flex-1">
       {block.text === '' && (
         <span
-          className={`pointer-events-none absolute select-none text-neutral-600 ${definition.textClasses}`}
+          className={`pointer-events-none absolute select-none text-faintest ${definition.textClasses}`}
         >
           {definition.placeholder}
         </span>
@@ -191,7 +191,7 @@ export function BlockRow({
         blockId={block.id}
         value={block.text}
         className={`w-full outline-none ${definition.textClasses} ${
-          block.type === 'todo' && checked ? 'text-neutral-500 line-through' : ''
+          block.type === 'todo' && checked ? 'text-faint line-through' : ''
         }`}
         onInput={(text) => applyInput(block.id, text)}
         onKeyDown={handleKeyDown}
@@ -204,12 +204,12 @@ export function BlockRow({
   if (block.type === 'divider') {
     content = (
       <div className="py-2">
-        <hr className="border-neutral-800" />
+        <hr className="border-border" />
       </div>
     )
   } else if (block.type === 'code') {
     content = (
-      <div className="my-1 w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2">
+      <div className="my-1 w-full rounded-md border border-border bg-panel px-3 py-2">
         {body}
       </div>
     )
@@ -230,7 +230,7 @@ export function BlockRow({
       data-checked={block.type === 'todo' ? String(checked) : undefined}
       onMouseDown={handleMouseDown}
       style={{ marginLeft: block.indent * 24 }}
-      className={`group relative rounded ${selected ? 'bg-blue-500/10' : ''} ${
+      className={`group relative rounded ${selected ? 'bg-selected' : ''} ${
         dragging ? 'opacity-40' : ''
       }`}
     >

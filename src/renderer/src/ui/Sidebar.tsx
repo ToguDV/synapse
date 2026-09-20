@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import type { RectAnchor } from '../editor/types'
 import { usePagesStore } from '../store/pagesStore'
+import { THEME_LABELS, useThemeStore } from '../store/themeStore'
 import { buildPageTree, collectDescendantIds, type PageNode } from '../store/pageTree'
 import { ConfirmDialog } from './ConfirmDialog'
 import { IconPicker } from './IconPicker'
@@ -42,7 +43,7 @@ function RenameInput({
           event.currentTarget.blur()
         }
       }}
-      className="mx-1 min-w-0 flex-1 rounded border border-blue-500 bg-neutral-900 px-1 py-0.5 text-sm text-neutral-100 outline-none"
+      className="mx-1 min-w-0 flex-1 rounded border border-accent bg-surface px-1 py-0.5 text-sm text-ink outline-none"
     />
   )
 }
@@ -91,8 +92,8 @@ function PageTreeItem({
         style={{ paddingLeft: depth * 12 }}
         className={`group flex items-center gap-0.5 rounded-md pr-1 transition ${
           isActive
-            ? 'bg-neutral-800 text-neutral-100'
-            : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200'
+            ? 'bg-hover text-ink'
+            : 'text-muted hover:bg-hover/60 hover:text-ink-soft'
         }`}
       >
         {hasChildren ? (
@@ -102,7 +103,7 @@ function PageTreeItem({
             data-expanded={expanded}
             aria-label={expanded ? 'Contraer' : 'Expandir'}
             onClick={() => toggleExpanded(page.id)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs text-neutral-500 transition hover:bg-neutral-700 hover:text-neutral-200"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs text-faint transition hover:bg-hover hover:text-ink-soft"
           >
             {expanded ? '▾' : '▸'}
           </button>
@@ -136,7 +137,7 @@ function PageTreeItem({
           data-page-action="add-child"
           title="Añadir subpágina"
           onClick={() => void createPage(page.id)}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-neutral-500 opacity-0 transition hover:bg-neutral-700 hover:text-neutral-100 focus:opacity-100 group-hover:opacity-100"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
           +
         </button>
@@ -145,7 +146,7 @@ function PageTreeItem({
           data-page-action="open-menu"
           title="Opciones de página"
           onClick={openMenu}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-neutral-500 opacity-0 transition hover:bg-neutral-700 hover:text-neutral-100 focus:opacity-100 group-hover:opacity-100"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
           ⋯
         </button>
@@ -176,6 +177,9 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const deletePage = usePagesStore((state) => state.deletePage)
   const renamePage = usePagesStore((state) => state.renamePage)
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
+  const themePreference = useThemeStore((state) => state.preference)
+  const cycleTheme = useThemeStore((state) => state.cyclePreference)
+  const theme = THEME_LABELS[themePreference]
   const [menu, setMenu] = useState<
     { pageId: string; source: HTMLButtonElement; anchor: RectAnchor } | null
   >(null)
@@ -191,15 +195,15 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const descendants = confirmPage ? collectDescendantIds(pages, confirmPage.id).length : 0
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-950">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-panel">
       <div className="flex items-center justify-between px-4 py-3">
-        <span className="text-sm font-semibold tracking-wide text-neutral-300">Synapse</span>
+        <span className="text-sm font-semibold tracking-wide text-ink-soft">Synapse</span>
         <button
           type="button"
           data-page-action="new-root"
           onClick={() => void createPage(null)}
           title="Nueva página"
-          className="rounded-md px-2 text-lg leading-6 text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
+          className="rounded-md px-2 text-lg leading-6 text-muted transition hover:bg-hover hover:text-ink"
         >
           +
         </button>
@@ -209,11 +213,11 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
         data-search-trigger
         onClick={onOpenSearch}
         title="Buscar (Ctrl+K)"
-        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
+        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
       >
         <span aria-hidden>🔍</span>
         <span className="flex-1 text-left">Buscar</span>
-        <span className="text-xs text-neutral-600">Ctrl K</span>
+        <span className="text-xs text-faintest">Ctrl K</span>
       </button>
       <nav className="flex-1 overflow-y-auto px-2 pb-3">
         {tree.map((node) => (
@@ -278,6 +282,17 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           onCancel={() => setConfirmId(null)}
         />
       )}
+      <button
+        type="button"
+        data-theme-toggle
+        data-theme-preference={themePreference}
+        onClick={cycleTheme}
+        title={`Tema: ${theme.label}. Clic para cambiar`}
+        className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
+      >
+        <span aria-hidden>{theme.icon}</span>
+        <span className="flex-1 text-left">Tema: {theme.label}</span>
+      </button>
     </aside>
   )
 }

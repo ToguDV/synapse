@@ -96,7 +96,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
         aria-modal="true"
         aria-label="Buscar"
         onKeyDown={handleKeyDown}
-        className="h-fit w-[36rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl"
+        className="h-fit w-[36rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-strong bg-surface shadow-2xl"
       >
         <input
           data-search-input
@@ -104,11 +104,11 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar páginas y bloques…"
-          className="w-full border-b border-neutral-800 bg-transparent px-4 py-3 text-sm text-neutral-100 outline-none placeholder:text-neutral-500"
+          className="w-full border-b border-border bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-faint"
         />
         <ul ref={listRef} data-search-results className="max-h-80 overflow-y-auto py-1">
           {term !== '' && !searching && results.length === 0 && (
-            <li data-search-empty className="px-4 py-6 text-center text-sm text-neutral-500">
+            <li data-search-empty className="px-4 py-6 text-center text-sm text-faint">
               Sin resultados para “{term}”
             </li>
           )}
@@ -121,12 +121,12 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
             return (
               <li key={`${result.kind}-${result.kind === 'page' ? result.pageId : result.blockId}`}>
                 {isFirstPage && (
-                  <p data-search-group="pages" className="px-4 pb-1 pt-2 text-xs text-neutral-500">
+                  <p data-search-group="pages" className="px-4 pb-1 pt-2 text-xs text-faint">
                     Páginas
                   </p>
                 )}
                 {isFirstBlock && (
-                  <p data-search-group="blocks" className="px-4 pb-1 pt-2 text-xs text-neutral-500">
+                  <p data-search-group="blocks" className="px-4 pb-1 pt-2 text-xs text-faint">
                     Bloques
                   </p>
                 )}
@@ -141,8 +141,8 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                   onClick={() => onNavigate(result)}
                   className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition ${
                     index === activeIndex
-                      ? 'bg-neutral-800 text-neutral-100'
-                      : 'text-neutral-300 hover:bg-neutral-800/60'
+                      ? 'bg-hover text-ink'
+                      : 'text-ink-soft hover:bg-hover/60'
                   }`}
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base">
@@ -153,10 +153,10 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{resultLabel(result)}</span>
                     {snippet && (
-                      <span className="block truncate text-xs text-neutral-400">
+                      <span className="block truncate text-xs text-muted">
                         {snippet.ellipsisStart && '…'}
                         {snippet.before}
-                        <mark className="rounded-sm bg-blue-500/30 text-neutral-100">
+                        <mark className="rounded-sm bg-accent-soft text-ink">
                           {snippet.match}
                         </mark>
                         {snippet.after}
@@ -164,7 +164,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs text-neutral-500">
+                  <span className="shrink-0 text-xs text-faint">
                     {result.kind === 'page' ? 'Página' : 'Bloque'}
                   </span>
                 </button>
@@ -173,7 +173,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
           })}
         </ul>
         {active && (
-          <p className="border-t border-neutral-800 px-4 py-2 text-xs text-neutral-500">
+          <p className="border-t border-border px-4 py-2 text-xs text-faint">
             ↑↓ para moverte · Enter para abrir · Esc para cerrar
           </p>
         )}

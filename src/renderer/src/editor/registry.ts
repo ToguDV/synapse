@@ -86,7 +86,7 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
     keywords: ['cita', 'quote', 'blockquote'],
     placeholder: 'Cita',
     textClasses:
-      'border-l-2 border-neutral-700 pl-3 text-base italic leading-7 text-neutral-300 whitespace-pre-wrap break-words',
+      'border-l-2 border-border-strong pl-3 text-base italic leading-7 text-ink-soft whitespace-pre-wrap break-words',
     continuation: 'quote',
     textual: true
   },

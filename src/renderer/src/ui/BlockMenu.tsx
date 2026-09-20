@@ -52,7 +52,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       ref={ref}
       data-block-menu
       style={style}
-      className="fixed z-50 w-60 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
+      className="fixed z-50 w-60 overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
     >
       {view === 'main' ? (
         <>
@@ -92,7 +92,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
               onClose()
             }}
           />
-          <div className="my-1 border-t border-neutral-800" />
+          <div className="my-1 border-t border-border" />
           <MenuItem
             action="delete"
             icon="⌫"
@@ -107,7 +107,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       ) : (
         <>
           <MenuItem action="back" icon="←" label="Convertir en…" onSelect={() => setView('main')} />
-          <div className="my-1 border-t border-neutral-800" />
+          <div className="my-1 border-t border-border" />
           {BLOCK_MENU_ORDER.map((type) => {
             const definition = getBlockDefinition(type)
             return (

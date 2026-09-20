@@ -1,5 +1,59 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens semánticos de color: claro por defecto, `.dark` en <html> para oscuro. */
+:root {
+  --canvas: #ffffff;
+  --panel: #f7f7f5;
+  --surface: #ffffff;
+  --hover: #efefed;
+  --border: #e9e9e7;
+  --border-strong: #d3d1cb;
+  --ink: #37352f;
+  --ink-soft: #57564f;
+  --muted: #6f6e69;
+  --faint: #8f8e8a;
+  --faintest: #b3b1ad;
+  --accent: #2383e2;
+  --accent-soft: rgb(35 131 226 / 0.2);
+  --selected: rgb(35 131 226 / 0.1);
+}
+
+.dark {
+  --canvas: #171717;
+  --panel: #0a0a0a;
+  --surface: #171717;
+  --hover: #262626;
+  --border: #262626;
+  --border-strong: #404040;
+  --ink: #f5f5f5;
+  --ink-soft: #d4d4d4;
+  --muted: #a3a3a3;
+  --faint: #737373;
+  --faintest: #525252;
+  --accent: #3b82f6;
+  --accent-soft: rgb(59 130 246 / 0.3);
+  --selected: rgb(59 130 246 / 0.1);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-hover: var(--hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-faintest: var(--faintest);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-selected: var(--selected);
+}
+
 /* Emojis a color empaquetados (el contenedor Linux no trae fuente de emojis).
    El unicode-range hace que solo se use para codepoints de emoji, así los
    dígitos y el texto latino siguen usando la fuente normal. */

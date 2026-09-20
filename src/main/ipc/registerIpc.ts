@@ -10,6 +10,9 @@ import {
 import { createPagesRepo } from '../db/repositories/pages'
 import { createBlocksRepo } from '../db/repositories/blocks'
 import { createSearchRepo } from '../db/repositories/search'
+import { createSettingsRepo } from '../db/repositories/settings'
+import { applyThemePreference } from '../theme'
+import { THEME_PREFERENCE_KEY } from '../../shared/theme'
 
 function requireString(value: unknown, name: string): string {
   if (typeof value !== 'string') throw new Error(`${name} debe ser un string`)
@@ -74,6 +77,7 @@ export function registerIpc(db: Database.Database): void {
   const pages = createPagesRepo(db)
   const blocks = createBlocksRepo(db)
   const search = createSearchRepo(db)
+  const settings = createSettingsRepo(db)
 
   ipcMain.handle('pages:list', () => pages.list())
   ipcMain.handle('pages:get', (_event, id: unknown) => pages.get(requireId(id)))
@@ -118,5 +122,14 @@ export function registerIpc(db: Database.Database): void {
     const parsedLimit =
       limit === undefined ? 20 : Math.min(50, Math.max(1, Math.floor(requireNumber(limit, 'limit'))))
     return search.search(text, parsedLimit)
+  })
+
+  ipcMain.handle('settings:get', (_event, key: unknown) => settings.get(requireId(key, 'key')))
+  ipcMain.handle('settings:set', (_event, payload: unknown) => {
+    const { key, value } = payload as Record<string, unknown>
+    const parsedKey = requireId(key, 'key')
+    const parsedValue = requireString(value, 'value')
+    settings.set(parsedKey, parsedValue)
+    if (parsedKey === THEME_PREFERENCE_KEY) applyThemePreference(parsedValue)
   })
 }

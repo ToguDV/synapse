@@ -26,5 +26,10 @@ export function migrate(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_blocks_page ON blocks(page_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `)
 }

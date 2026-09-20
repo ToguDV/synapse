@@ -156,9 +156,7 @@ const selectionInfo = (page) =>
   })
 const activeSlashItem = (page) =>
   page.evaluate(() => {
-    const el = [...document.querySelectorAll('[data-slash-item]')].find((e) =>
-      e.classList.contains('bg-neutral-800')
-    )
+    const el = document.querySelector('[data-slash-item][data-active="true"]')
     return el ? el.getAttribute('data-slash-item') : null
   })
 

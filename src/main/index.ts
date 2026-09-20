@@ -1,8 +1,10 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, nativeTheme, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { openDatabase } from './db/connection'
 import { resolveDatabasePath } from './db/path'
+import { createSettingsRepo } from './db/repositories/settings'
 import { registerIpc } from './ipc/registerIpc'
+import { applyStoredTheme } from './theme'
 
 if (process.env['ELECTRON_DISABLE_GPU']) {
   app.commandLine.appendSwitch('disable-gpu')
@@ -15,6 +17,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     title: 'Synapse',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#171717' : '#ffffff',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -39,6 +42,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   const db = openDatabase(resolveDatabasePath())
+  applyStoredTheme(createSettingsRepo(db))
   registerIpc(db)
 
   createWindow()
