@@ -1,0 +1,11 @@
+node_modules
+out
+dist
+release
+.git
+.gitignore
+.opencode
+.DS_Store
+*.sqlite
+*.sqlite3
+*.db

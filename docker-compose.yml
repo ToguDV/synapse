@@ -1,0 +1,44 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: synapse-dev
+    network_mode: host
+    ipc: host
+    init: true
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      ELECTRON_DISABLE_SANDBOX: "1"
+      ELECTRON_DISABLE_GPU: "1"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - electron_cache:/home/node/.cache/electron
+      - npm_cache:/home/node/.npm
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    profiles: ["build"]
+    network_mode: host
+    ipc: host
+    init: true
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      ELECTRON_DISABLE_SANDBOX: "1"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - electron_cache:/home/node/.cache/electron
+      - npm_cache:/home/node/.npm
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+
+volumes:
+  node_modules:
+  electron_cache:
+  npm_cache:

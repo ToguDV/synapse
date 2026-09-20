@@ -1,0 +1,15 @@
+appId: dev.synapse.editor
+productName: Synapse
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/better-sqlite3/**
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
