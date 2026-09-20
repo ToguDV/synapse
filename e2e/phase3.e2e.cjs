@@ -73,7 +73,7 @@ async function stage1(page) {
   const steps = []
   await setup(page)
 
-  const title = await page.locator('input').first().inputValue()
+  const title = await page.locator('[data-page-title-input]').inputValue()
   check(steps, 'título de la página es "Test"', title === 'Test', title)
 
   let blocks = await dom(page)
@@ -263,7 +263,7 @@ async function stage3(page) {
   await page.waitForSelector('div[contenteditable]')
   await page.waitForTimeout(300)
   const blocks = await dom(page)
-  const title = await page.locator('input').first().inputValue()
+  const title = await page.locator('[data-page-title-input]').inputValue()
   check(steps, 'reload reconstruye los dos bloques', blocks.length === 2, blocks)
   check(steps, 'reload conserva "hola "', blocks[0]?.text === 'hola ', blocks)
   check(steps, 'reload conserva "mundo"', blocks[1]?.text === 'mundo', blocks)

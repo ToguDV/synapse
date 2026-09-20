@@ -1,7 +1,7 @@
 // Runner E2E de la Fase 5 (páginas) con Playwright + Chromium.
 // Cubre: árbol anidado con expandir/colapsar, crear página raíz y subpágina,
-// rename inline y desde el header, breadcrumbs, iconos, borrado con confirmación
-// y autosave al cambiar de página.
+// rename inline y desde el header, breadcrumbs, iconos, borrado con confirmación,
+// autosave al cambiar de página y título multilínea con auto-ajuste de fuente.
 //
 // Uso (desde el host, con el dev server del renderer en 5174):
 //   docker compose run -d --rm --name synapse-e2e dev npx vite --config tests/vite.e2e.config.ts
@@ -315,7 +315,7 @@ async function stage3RenameBreadcrumbs(page) {
   )
 
   await selectPage(page, 'p-grand')
-  const header = page.locator('main input').first()
+  const header = page.locator('[data-page-title-input]')
   await header.fill('Nieta renombrada')
   await advanceAutosave(page)
   rows = await pagesDom(page)
@@ -350,6 +350,15 @@ async function stage4Icons(page) {
   await page.click('[data-icon-option="🚀"]')
   await settle(page, 200)
   check(steps, 'elegir un emoji lo pinta en el header', (await page.textContent('[data-icon-button]')).includes('🚀'))
+  const iconTitleDelta = await page.evaluate(() => {
+    const button = document.querySelector('[data-icon-button]')
+    const title = document.querySelector('[data-page-title-input]')
+    const b = button.getBoundingClientRect()
+    const t = title.getBoundingClientRect()
+    const line = Number.parseFloat(getComputedStyle(title).lineHeight)
+    return Math.abs(b.top + b.height / 2 - (t.top + line / 2))
+  })
+  check(steps, 'el emoji del header queda centrado con el título', iconTitleDelta <= 1, iconTitleDelta)
   let rows = await pagesDom(page)
   check(
     steps,
@@ -541,6 +550,136 @@ async function stage6AutosaveOnSwitch(page) {
   return { steps, calls: mocked.calls }
 }
 
+async function stage7TitleFit(page) {
+  const steps = []
+  await setup(page)
+  const longTitle =
+    'Un título larguísimo que no cabe a treinta y seis píxeles y tiene que envolverse en varias líneas'
+  await seed(page, {
+    pages: [P('p-root', longTitle, null, 0, 1)],
+    blocks: []
+  })
+
+  const titleMetrics = () =>
+    page.evaluate(() => {
+      const el = document.querySelector('[data-page-title-input]')
+      const style = getComputedStyle(el)
+      return {
+        fontSize: Number.parseFloat(style.fontSize),
+        lineHeight: Number.parseFloat(style.lineHeight),
+        height: el.getBoundingClientRect().height,
+        scrollHeight: el.scrollHeight,
+        value: el.value
+      }
+    })
+
+  let metrics = await titleMetrics()
+  check(
+    steps,
+    'un título largo reduce la fuente hasta el mínimo de 24px',
+    metrics.fontSize === 24,
+    metrics
+  )
+  check(
+    steps,
+    'la altura de línea acompaña a la fuente mínima (27px)',
+    metrics.lineHeight === 27,
+    metrics.lineHeight
+  )
+  check(
+    steps,
+    'agotado el mínimo el título hace wrap en varias líneas',
+    metrics.height >= metrics.lineHeight * 2 - 1,
+    metrics
+  )
+
+  const iconTitleDelta = await page.evaluate(() => {
+    const button = document.querySelector('[data-icon-button]')
+    const title = document.querySelector('[data-page-title-input]')
+    const b = button.getBoundingClientRect()
+    const t = title.getBoundingClientRect()
+    const line = Number.parseFloat(getComputedStyle(title).lineHeight)
+    return Math.abs(b.top + b.height / 2 - (t.top + line / 2))
+  })
+  check(
+    steps,
+    'con el título envuelto a 24px el icono sigue centrado con la primera línea',
+    iconTitleDelta <= 1,
+    iconTitleDelta
+  )
+
+  await page.setViewportSize({ width: 640, height: 800 })
+  await settle(page, 300)
+  metrics = await titleMetrics()
+  check(
+    steps,
+    'estrechar el viewport reajusta el alto sin recortar el texto',
+    metrics.scrollHeight <= metrics.height + 1,
+    metrics
+  )
+  check(
+    steps,
+    'tras estrechar el viewport la fuente sigue en el mínimo',
+    metrics.fontSize === 24,
+    metrics
+  )
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await settle(page, 300)
+
+  const titleInput = page.locator('[data-page-title-input]')
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-page-title-input]')
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  })
+  const beforeEnter = await titleInput.inputValue()
+  await page.keyboard.press('Enter')
+  await settle(page, 150)
+  const afterEnter = await titleInput.inputValue()
+  check(
+    steps,
+    'Enter en el título no inserta salto de línea',
+    afterEnter === beforeEnter && !afterEnter.includes('\n'),
+    { before: beforeEnter.length, after: afterEnter.length }
+  )
+
+  await titleInput.fill('abcdef')
+  await settle(page, 100)
+  const inserted = await page.evaluate(() => {
+    const el = document.querySelector('[data-page-title-input]')
+    el.focus()
+    el.setSelectionRange(3, 3)
+    return document.execCommand('insertText', false, 'x\ny')
+  })
+  await settle(page, 150)
+  const afterInsert = await page.evaluate(() => {
+    const el = document.querySelector('[data-page-title-input]')
+    return { value: el.value, start: el.selectionStart, end: el.selectionEnd }
+  })
+  check(
+    steps,
+    'insertar texto con salto de línea lo normaliza a espacio',
+    inserted && afterInsert.value === 'abcx ydef',
+    { inserted, afterInsert }
+  )
+  check(
+    steps,
+    'el caret se conserva tras normalizar el salto de línea',
+    afterInsert.start === 6 && afterInsert.end === 6,
+    afterInsert
+  )
+  await advanceAutosave(page)
+  const mocked = await state(page)
+  check(
+    steps,
+    'el título normalizado se persiste sin saltos de línea',
+    mocked.pages.find((page) => page.id === 'p-root')?.title === 'abcx ydef',
+    mocked.pages
+  )
+  await shot(page, 'e2e-p5-07-title-fit.png')
+  return { steps, calls: mocked.calls }
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
@@ -558,7 +697,8 @@ async function main() {
     ['stage3 · rename y breadcrumbs', stage3RenameBreadcrumbs],
     ['stage4 · iconos', stage4Icons],
     ['stage5 · borrado con confirmación', stage5Delete],
-    ['stage6 · autosave al cambiar de página', stage6AutosaveOnSwitch]
+    ['stage6 · autosave al cambiar de página', stage6AutosaveOnSwitch],
+    ['stage7 · título multilínea con auto-ajuste', stage7TitleFit]
   ]
   for (const [name, fn] of stages) {
     try {
