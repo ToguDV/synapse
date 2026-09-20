@@ -39,6 +39,7 @@ export interface EditorState {
   past: HistoryEntry[]
   future: HistoryEntry[]
   loadPage: (pageId: string) => Promise<void>
+  cancelLoad: (pageId: string) => () => void
   reset: () => void
   flush: () => Promise<void>
   setActiveBlock: (id: string | null) => void
@@ -81,6 +82,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
   let flushQueue: Promise<void> = Promise.resolve()
   let loadQueue: Promise<void> = Promise.resolve()
   let lastTextEdit: { blockId: string; at: number } | null = null
+  const cancelledLoads = new Set<string>()
 
   const schedulePersist = (): void => {
     clearTimeout(persistTimer)
@@ -111,8 +113,35 @@ export const useEditorStore = create<EditorState>((set, get) => {
     }
   }
 
+  const resetState = (): void => {
+    clearTimeout(persistTimer)
+    persisted = new Map()
+    persistedPageId = null
+    lastTextEdit = null
+    set({
+      pageId: null,
+      blocks: [],
+      loading: false,
+      activeBlockId: null,
+      focusRequest: null,
+      selectedIds: [],
+      selectionAnchor: null,
+      past: [],
+      future: []
+    })
+  }
+
+  const ensureActive = (pageId: string): boolean => {
+    if (cancelledLoads.has(pageId)) {
+      if (get().pageId === pageId) resetState()
+      return false
+    }
+    return get().pageId === pageId
+  }
+
   const performLoad = async (pageId: string): Promise<void> => {
     await get().flush()
+    if (cancelledLoads.has(pageId)) return
     persisted = new Map()
     persistedPageId = pageId
     lastTextEdit = null
@@ -129,10 +158,15 @@ export const useEditorStore = create<EditorState>((set, get) => {
     })
     try {
       let rows = await window.api.blocks.list(pageId)
-      if (get().pageId !== pageId) return
+      if (!ensureActive(pageId)) return
       if (rows.length === 0) {
-        rows = [await window.api.blocks.create({ pageId })]
-        if (get().pageId !== pageId) return
+        try {
+          rows = [await window.api.blocks.create({ pageId })]
+        } catch (error) {
+          if (!ensureActive(pageId)) return
+          throw error
+        }
+        if (!ensureActive(pageId)) return
       }
       for (const row of rows) {
         persisted.set(row.id, {
@@ -173,6 +207,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     future: [],
 
     loadPage: (pageId) => {
+      cancelledLoads.delete(pageId)
       loadQueue = loadQueue.then(
         () => performLoad(pageId),
         () => performLoad(pageId)
@@ -180,23 +215,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
       return loadQueue
     },
 
-    reset: () => {
-      clearTimeout(persistTimer)
-      persisted = new Map()
-      persistedPageId = null
-      lastTextEdit = null
-      set({
-        pageId: null,
-        blocks: [],
-        loading: false,
-        activeBlockId: null,
-        focusRequest: null,
-        selectedIds: [],
-        selectionAnchor: null,
-        past: [],
-        future: []
-      })
+    cancelLoad: (pageId) => {
+      cancelledLoads.add(pageId)
+      return () => {
+        cancelledLoads.delete(pageId)
+      }
     },
+
+    reset: resetState,
 
     flush: () => {
       clearTimeout(persistTimer)

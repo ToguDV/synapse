@@ -30,6 +30,10 @@ function clearRenameTimer(id: string): void {
   renameTimers.delete(id)
 }
 
+function fireAndForget(promise: Promise<unknown>): void {
+  void promise.catch(() => undefined)
+}
+
 function parentsWithChildren(pages: Page[]): string[] {
   const parents = new Set<string>()
   for (const page of pages) {
@@ -70,7 +74,13 @@ export const usePagesStore = create<PagesState>((set, get) => ({
   },
 
   createPage: async (parentId = null) => {
-    const page = await window.api.pages.create({ title: DEFAULT_TITLE, parentId })
+    let page: Page
+    try {
+      page = await window.api.pages.create({ title: DEFAULT_TITLE, parentId })
+    } catch (error) {
+      console.error('No se pudo crear la página', error)
+      return
+    }
     set((state) => ({
       pages: [...state.pages, page],
       activePageId: page.id,
@@ -82,15 +92,31 @@ export const usePagesStore = create<PagesState>((set, get) => ({
   },
 
   deletePage: async (id) => {
-    const { pages, activePageId } = get()
+    const { pages } = get()
     const doomed = new Set([id, ...collectDescendantIds(pages, id)])
     const editor = useEditorStore.getState()
     const editorIsDoomed = editor.pageId !== null && doomed.has(editor.pageId)
+    const restoreLoads = [...doomed].map((doomedId) => editor.cancelLoad(doomedId))
     if (editorIsDoomed) await editor.flush()
+    try {
+      await window.api.pages.remove(id)
+    } catch (error) {
+      for (const restoreLoad of restoreLoads) restoreLoad()
+      console.error('No se pudo eliminar la página', error)
+      const activeId = get().activePageId
+      const editorNow = useEditorStore.getState()
+      if (activeId !== null && editorNow.pageId !== activeId) {
+        fireAndForget(editorNow.loadPage(activeId))
+      }
+      return
+    }
     for (const doomedId of doomed) clearRenameTimer(doomedId)
-    await window.api.pages.remove(id)
-    if (editorIsDoomed) useEditorStore.getState().reset()
-    const remaining = pages.filter((page) => !doomed.has(page.id))
+    if (editorIsDoomed) {
+      const editorNow = useEditorStore.getState()
+      if (editorNow.pageId === null || doomed.has(editorNow.pageId)) editorNow.reset()
+    }
+    const current = get().pages
+    const remaining = current.filter((page) => !doomed.has(page.id))
     set({
       pages: remaining,
       expandedIds: get().expandedIds.filter((candidate) => !doomed.has(candidate))
@@ -100,8 +126,9 @@ export const usePagesStore = create<PagesState>((set, get) => ({
       await get().createPage()
       return
     }
-    if (activePageId !== null && doomed.has(activePageId)) {
-      set({ activePageId: nextPageAfterDelete(pages, id) ?? remaining[0].id })
+    const currentActiveId = get().activePageId
+    if (currentActiveId !== null && doomed.has(currentActiveId)) {
+      set({ activePageId: nextPageAfterDelete(current, id) ?? remaining[0].id })
     }
   },
 
@@ -114,7 +141,7 @@ export const usePagesStore = create<PagesState>((set, get) => ({
       id,
       setTimeout(() => {
         renameTimers.delete(id)
-        void window.api.pages.rename(id, title).catch(() => undefined)
+        fireAndForget(window.api.pages.rename(id, title))
       }, AUTOSAVE_DELAY_MS)
     )
   },
@@ -123,7 +150,7 @@ export const usePagesStore = create<PagesState>((set, get) => ({
     set((state) => ({
       pages: state.pages.map((page) => (page.id === id ? { ...page, icon } : page))
     }))
-    void window.api.pages.setIcon(id, icon).catch(() => undefined)
+    fireAndForget(window.api.pages.setIcon(id, icon))
   },
 
   toggleExpanded: (id) =>

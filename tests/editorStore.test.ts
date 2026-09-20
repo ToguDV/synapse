@@ -119,6 +119,57 @@ describe('editorStore · carga', () => {
   })
 })
 
+describe('editorStore · cancelLoad', () => {
+  it('cancelLoad impide cargar (y crear bloque) en una página ya borrada', async () => {
+    const { blocks } = installApi([])
+
+    const pending = load()
+    state().cancelLoad('p1')
+    await pending
+
+    expect(blocks.list).not.toHaveBeenCalled()
+    expect(blocks.create).not.toHaveBeenCalled()
+    expect(state().pageId).toBeNull()
+  })
+
+  it('cancelLoad a mitad de carga evita el bloque inicial y limpia el estado', async () => {
+    const { blocks } = installApi([])
+    let release: () => void = () => {}
+    blocks.list.mockImplementationOnce(
+      () =>
+        new Promise<Block[]>((resolve) => {
+          release = () => resolve([])
+        })
+    )
+
+    const pending = load()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(blocks.list).toHaveBeenCalledWith('p1')
+
+    state().cancelLoad('p1')
+    release()
+    await pending
+
+    expect(blocks.create).not.toHaveBeenCalled()
+    expect(state().pageId).toBeNull()
+    expect(state().loading).toBe(false)
+  })
+
+  it('volver a cargar la misma página reactiva la carga cancelada', async () => {
+    const { blocks } = installApi([makeBlock({ id: 'a', content: '{"text":"Hola"}' })])
+
+    const cancelled = load()
+    state().cancelLoad('p1')
+    await cancelled
+
+    await load()
+
+    expect(state().pageId).toBe('p1')
+    expect(state().blocks[0].text).toBe('Hola')
+    expect(blocks.list).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('editorStore · edición', () => {
   it('setText actualiza el estado y guarda con debounce', async () => {
     const { blocks } = installApi([makeBlock({ id: 'a' })])

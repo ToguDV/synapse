@@ -106,6 +106,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('pagesStore', () => {
@@ -204,6 +205,81 @@ describe('pagesStore', () => {
     const page = usePagesStore.getState().pages[0]
     expect(page.title).toBe('Nueva')
     expect(page.icon).toBe('🚀')
+  })
+
+  // Regresión F5: el set de deletePage debe partir del estado actual y no del
+  // snapshot previo a los await, para no descartar cambios concurrentes.
+  it('deletePage conserva los cambios ocurridos durante el IPC de borrado', async () => {
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+
+    let release: () => void = () => {}
+    api.pages.remove.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        })
+    )
+
+    const pending = usePagesStore.getState().deletePage('b')
+    usePagesStore.getState().setPageIcon('a', '🚀')
+    release()
+    await pending
+
+    const pages = usePagesStore.getState().pages
+    expect(pages.map((page) => page.id)).toEqual(['a'])
+    expect(pages[0].icon).toBe('🚀')
+  })
+
+  it('deletePage no toca el estado si el IPC de borrado falla', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    api.pages.remove.mockRejectedValueOnce(new Error('db caída'))
+
+    await expect(usePagesStore.getState().deletePage('b')).resolves.toBeUndefined()
+
+    expect(errorSpy).toHaveBeenCalled()
+    expect(usePagesStore.getState().pages.map((page) => page.id)).toEqual(['a', 'b'])
+    expect(usePagesStore.getState().activePageId).toBe('a')
+  })
+
+  // Regresión F5: si el usuario cambia de página durante el await del borrado,
+  // el reset del editor no debe pisar la página que acaba de cargar.
+  it('deletePage no resetea el editor si se cambió de página durante el borrado', async () => {
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 })
+    ])
+    const { usePagesStore, useEditorStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    await useEditorStore.getState().loadPage('a')
+
+    let release: () => void = () => {}
+    api.pages.remove.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        })
+    )
+
+    const pending = usePagesStore.getState().deletePage('a')
+    usePagesStore.getState().selectPage('b')
+    await useEditorStore.getState().loadPage('b')
+    release()
+    await pending
+
+    expect(usePagesStore.getState().activePageId).toBe('b')
+    expect(useEditorStore.getState().pageId).toBe('b')
+    expect(useEditorStore.getState().blocks).toHaveLength(1)
   })
 
   it('renamePage actualiza en optimista y hace flush debounced', async () => {

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { BlockType } from '../../../shared/types'
 import { filterSlashCommands } from '../editor/commands'
 import type { RectAnchor } from '../editor/types'
+import { useAnchoredPosition } from './rectAnchor'
 
 interface SlashMenuProps {
   anchor: RectAnchor
@@ -10,13 +11,10 @@ interface SlashMenuProps {
   onClose: (query: string) => void
 }
 
-const MENU_WIDTH = 288
-const MENU_HEIGHT = 300
-
 export function SlashMenu({ anchor, onSelect, onClose }: SlashMenuProps) {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
-  const listRef = useRef<HTMLDivElement>(null)
+  const { ref: listRef, style } = useAnchoredPosition(anchor)
   const queryRef = useRef(query)
   const activeRef = useRef(activeIndex)
   const commands = useMemo(() => filterSlashCommands(query), [query])
@@ -84,15 +82,11 @@ export function SlashMenu({ anchor, onSelect, onClose }: SlashMenuProps) {
     item?.scrollIntoView({ block: 'nearest' })
   }, [activeIndex])
 
-  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - MENU_WIDTH - 8))
-  const openUp = anchor.bottom + MENU_HEIGHT + 8 > window.innerHeight
-  const top = openUp ? Math.max(8, anchor.top - MENU_HEIGHT - 6) : anchor.bottom + 6
-
   return createPortal(
     <div
       ref={listRef}
       data-slash-menu
-      style={{ left, top }}
+      style={style}
       className="fixed z-50 w-72 overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
     >
       {commands.length === 0 ? (

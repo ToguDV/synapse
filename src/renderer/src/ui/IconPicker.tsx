@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { PAGE_EMOJIS } from './emojis'
+import { useAnchoredPosition } from './rectAnchor'
 
 interface IconPickerProps {
   anchor: RectAnchor
@@ -11,10 +12,9 @@ interface IconPickerProps {
 }
 
 const PICKER_WIDTH = 296
-const PICKER_HEIGHT = 244
 
 export function IconPicker({ anchor, current, onSelect, onClose }: IconPickerProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const { ref, style } = useAnchoredPosition(anchor)
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -37,16 +37,12 @@ export function IconPicker({ anchor, current, onSelect, onClose }: IconPickerPro
     }
   }, [onClose])
 
-  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - PICKER_WIDTH - 8))
-  const openUp = anchor.bottom + PICKER_HEIGHT > window.innerHeight
-  const top = openUp ? Math.max(8, anchor.top - PICKER_HEIGHT - 6) : anchor.bottom + 6
-
   return createPortal(
     <div
       ref={ref}
       data-icon-picker
-      style={{ left, top, width: PICKER_WIDTH }}
-      className="fixed z-[70] overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 shadow-2xl"
+      style={{ ...style, width: PICKER_WIDTH }}
+      className="fixed z-[70] max-h-[70vh] overflow-y-auto rounded-lg border border-neutral-700 bg-neutral-900 shadow-2xl"
     >
       {current && (
         <button

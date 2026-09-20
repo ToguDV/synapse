@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { MenuItem } from './MenuItem'
+import { useAnchoredPosition } from './rectAnchor'
 
 interface PageMenuProps {
   pageId: string
@@ -13,9 +14,6 @@ interface PageMenuProps {
   onClose: () => void
 }
 
-const MENU_WIDTH = 224
-const MENU_HEIGHT = 180
-
 export function PageMenu({
   pageId,
   anchor,
@@ -25,7 +23,7 @@ export function PageMenu({
   onDelete,
   onClose
 }: PageMenuProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const { ref, style } = useAnchoredPosition(anchor, { align: 'right' })
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -48,15 +46,11 @@ export function PageMenu({
     }
   }, [onClose])
 
-  const left = Math.max(8, Math.min(anchor.right + 6, window.innerWidth - MENU_WIDTH - 8))
-  const openUp = anchor.bottom + MENU_HEIGHT + 8 > window.innerHeight
-  const top = openUp ? Math.max(8, anchor.bottom - MENU_HEIGHT) : anchor.bottom + 4
-
   return createPortal(
     <div
       ref={ref}
       data-page-menu={pageId}
-      style={{ left, top }}
+      style={style}
       className="fixed z-50 w-56 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
     >
       <MenuItem

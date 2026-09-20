@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditorStore } from '../editor/editorStore'
 import { BLOCK_MENU_ORDER, getBlockDefinition } from '../editor/registry'
 import type { RectAnchor } from '../editor/types'
 import { MenuItem } from './MenuItem'
+import { useAnchoredPosition } from './rectAnchor'
 
 interface BlockMenuProps {
   blockId: string
@@ -11,12 +12,9 @@ interface BlockMenuProps {
   onClose: () => void
 }
 
-const MENU_WIDTH = 240
-const MENU_HEIGHT = 260
-
 export function BlockMenu({ blockId, anchor, onClose }: BlockMenuProps) {
   const [view, setView] = useState<'main' | 'convert'>('main')
-  const ref = useRef<HTMLDivElement>(null)
+  const { ref, style } = useAnchoredPosition(anchor, { align: 'right' })
   const blocks = useEditorStore((state) => state.blocks)
   const duplicateBlocks = useEditorStore((state) => state.duplicateBlocks)
   const deleteBlocks = useEditorStore((state) => state.deleteBlocks)
@@ -48,15 +46,11 @@ export function BlockMenu({ blockId, anchor, onClose }: BlockMenuProps) {
 
   if (!block) return null
 
-  const left = Math.max(8, Math.min(anchor.right + 6, window.innerWidth - MENU_WIDTH - 8))
-  const openUp = anchor.top + MENU_HEIGHT + 8 > window.innerHeight
-  const top = openUp ? Math.max(8, anchor.top - MENU_HEIGHT) : anchor.top
-
   return createPortal(
     <div
       ref={ref}
       data-block-menu
-      style={{ left, top }}
+      style={style}
       className="fixed z-50 w-60 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-2xl"
     >
       {view === 'main' ? (
