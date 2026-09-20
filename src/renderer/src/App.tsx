@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { RectAnchor } from './editor/types'
 import { usePagesStore } from './store/pagesStore'
 import { Sidebar } from './ui/Sidebar'
 import { BlockList } from './blocks/BlockList'
 import { Breadcrumbs } from './ui/Breadcrumbs'
 import { IconPicker } from './ui/IconPicker'
-import { rectAnchor } from './ui/rectAnchor'
+import { rectAnchor, rectAnchorIfConnected } from './ui/rectAnchor'
 
 function App() {
   const ready = usePagesStore((state) => state.ready)
@@ -14,7 +15,8 @@ function App() {
   const renamePage = usePagesStore((state) => state.renamePage)
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
   const activePage = pages.find((page) => page.id === activePageId) ?? null
-  const [iconAnchor, setIconAnchor] = useState<ReturnType<typeof rectAnchor> | null>(null)
+  const iconButtonRef = useRef<HTMLButtonElement>(null)
+  const [iconAnchor, setIconAnchor] = useState<RectAnchor | null>(null)
 
   useEffect(() => {
     void initialize()
@@ -31,6 +33,7 @@ function App() {
             <Breadcrumbs pageId={activePage.id} />
             <div className="group flex items-start gap-2">
               <button
+                ref={iconButtonRef}
                 type="button"
                 data-icon-button
                 title={activePage.icon ? 'Cambiar icono' : 'Añadir icono'}
@@ -52,6 +55,7 @@ function App() {
             {iconAnchor && (
               <IconPicker
                 anchor={iconAnchor}
+                getAnchor={() => rectAnchorIfConnected(iconButtonRef.current, iconAnchor)}
                 current={activePage.icon}
                 onSelect={(icon) => {
                   setPageIcon(activePage.id, icon)

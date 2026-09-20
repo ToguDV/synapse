@@ -131,12 +131,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
     })
   }
 
-  const ensureActive = (pageId: string): boolean => {
-    if (cancelledLoads.has(pageId)) {
-      if (get().pageId === pageId) resetState()
-      return false
-    }
-    return get().pageId === pageId
+  const isLoadCurrent = (pageId: string): boolean => get().pageId === pageId
+
+  const abortCancelledLoad = (pageId: string): boolean => {
+    if (!cancelledLoads.has(pageId)) return false
+    if (isLoadCurrent(pageId)) resetState()
+    return true
   }
 
   const performLoad = async (pageId: string): Promise<void> => {
@@ -158,15 +158,15 @@ export const useEditorStore = create<EditorState>((set, get) => {
     })
     try {
       let rows = await window.api.blocks.list(pageId)
-      if (!ensureActive(pageId)) return
+      if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
       if (rows.length === 0) {
         try {
           rows = [await window.api.blocks.create({ pageId })]
         } catch (error) {
-          if (!ensureActive(pageId)) return
+          if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
           throw error
         }
-        if (!ensureActive(pageId)) return
+        if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
       }
       for (const row of rows) {
         persisted.set(row.id, {

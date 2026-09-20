@@ -9,12 +9,13 @@ import { useAnchoredPosition } from './rectAnchor'
 interface BlockMenuProps {
   blockId: string
   anchor: RectAnchor
+  getAnchor?: () => RectAnchor
   onClose: () => void
 }
 
-export function BlockMenu({ blockId, anchor, onClose }: BlockMenuProps) {
+export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProps) {
   const [view, setView] = useState<'main' | 'convert'>('main')
-  const { ref, style } = useAnchoredPosition(anchor, { align: 'right' })
+  const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
   const blocks = useEditorStore((state) => state.blocks)
   const duplicateBlocks = useEditorStore((state) => state.duplicateBlocks)
   const deleteBlocks = useEditorStore((state) => state.deleteBlocks)

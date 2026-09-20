@@ -6,11 +6,12 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { BlockType } from '../../../shared/types'
-import { insertPlainText, readPlainText, setCaretOffset } from '../editor/caret'
+import { insertPlainText, getCaretAnchor, readPlainText, setCaretOffset } from '../editor/caret'
 import { useEditorStore } from '../editor/editorStore'
 import { maxIndentFor } from '../editor/transforms'
 import type { RectAnchor } from '../editor/types'
 import { BlockMenu } from '../ui/BlockMenu'
+import { rectAnchor, rectAnchorIfConnected } from '../ui/rectAnchor'
 import { SlashMenu } from '../ui/SlashMenu'
 import { BlockRow } from './BlockRow'
 
@@ -18,6 +19,7 @@ interface PendingDrag {
   blockId: string
   x: number
   y: number
+  source: HTMLButtonElement
   anchor: RectAnchor
 }
 
@@ -29,6 +31,18 @@ interface DragState {
 
 const DRAG_THRESHOLD_PX = 4
 const INDENT_STEP_PX = 24
+
+function caretAnchorFor(blockId: string, fallback: RectAnchor): RectAnchor {
+  const element = document.querySelector<HTMLElement>(
+    `[data-block-id="${CSS.escape(blockId)}"]`
+  )
+  if (!element) return fallback
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || !element.contains(selection.anchorNode)) {
+    return rectAnchor(element)
+  }
+  return getCaretAnchor(element) ?? fallback
+}
 
 function computeDrop(
   root: HTMLElement | null,
@@ -104,7 +118,9 @@ export function BlockList({ pageId }: { pageId: string }) {
   const pendingRef = useRef<PendingDrag | null>(null)
   const dragRef = useRef<DragState | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
-  const [menu, setMenu] = useState<{ blockId: string; anchor: RectAnchor } | null>(null)
+  const [menu, setMenu] = useState<
+    { blockId: string; anchor: RectAnchor; source: HTMLButtonElement } | null
+  >(null)
   const [slash, setSlash] = useState<{ blockId: string; anchor: RectAnchor } | null>(null)
 
   useEffect(() => {
@@ -146,7 +162,11 @@ export function BlockList({ pageId }: { pageId: string }) {
       if (active) {
         useEditorStore.getState().moveBlockTo(pending.blockId, active.overIndex, active.indent)
       } else {
-        setMenu({ blockId: pending.blockId, anchor: pending.anchor })
+        setMenu({
+          blockId: pending.blockId,
+          anchor: rectAnchorIfConnected(pending.source, pending.anchor),
+          source: pending.source
+        })
       }
     }
     const onKeyDown = (event: KeyboardEvent) => {
@@ -186,12 +206,12 @@ export function BlockList({ pageId }: { pageId: string }) {
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
-    const rect = event.currentTarget.getBoundingClientRect()
     pendingRef.current = {
       blockId,
       x: event.clientX,
       y: event.clientY,
-      anchor: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }
+      source: event.currentTarget,
+      anchor: rectAnchor(event.currentTarget)
     }
     setMenu(null)
   }
@@ -257,12 +277,18 @@ export function BlockList({ pageId }: { pageId: string }) {
       )}
       {drag && placeholderIndex >= blocks.length && placeholder}
       {slash && (
-        <SlashMenu anchor={slash.anchor} onSelect={selectSlash} onClose={closeSlash} />
+        <SlashMenu
+          anchor={slash.anchor}
+          getAnchor={() => caretAnchorFor(slash.blockId, slash.anchor)}
+          onSelect={selectSlash}
+          onClose={closeSlash}
+        />
       )}
       {menuBlock && (
         <BlockMenu
           blockId={menuBlock.blockId}
           anchor={menuBlock.anchor}
+          getAnchor={() => rectAnchorIfConnected(menuBlock.source, menuBlock.anchor)}
           onClose={() => setMenu(null)}
         />
       )}

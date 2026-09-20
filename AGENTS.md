@@ -24,6 +24,7 @@ docker compose down                                # parar (los volúmenes persi
   ```bash
   docker compose run -d --rm --name synapse-e2e dev npx vite --config tests/vite.e2e.config.ts
   node e2e/phase3.e2e.cjs && node e2e/phase4.e2e.cjs && node e2e/phase5.e2e.cjs   # 42, 53 y 37 checks
+  node e2e/anchor-tracking.e2e.cjs                                                 # 18 checks (popovers: scroll/resize)
   docker stop synapse-e2e
   ```
 
@@ -83,7 +84,9 @@ docker compose down                                # parar (los volúmenes persi
    - `ui/Sidebar.tsx` (árbol recursivo, expandir/colapsar, rename inline, acciones en hover), `ui/PageMenu.tsx`, `ui/Breadcrumbs.tsx`, `ui/IconPicker.tsx` + `ui/emojis.ts`, `ui/ConfirmDialog.tsx` y `ui/MenuItem.tsx` (compartido con `BlockMenu`).
    - Sin drag & drop de páginas (el repo ya soporta `move` para más adelante); los iconos son un set curado de emojis sin dependencias.
    - Nota: los emojis usan `assets/fonts/NotoColorEmoji.ttf` (Noto Color Emoji, OFL) empaquetada vía `@font-face` en `main.css` con `unicode-range` (los contenedores Linux no traen fuente de emojis; el rango evita que la fuente afecte a dígitos/texto latino).
-   - Tests: 139 unit (añadidos `tests/pageTree.test.ts` y `tests/pagesStore.test.ts`, con 2 de regresión del debounce de rename) y 37 checks E2E (`e2e/phase5.e2e.cjs`, mismos comandos que la fase 3).
+   - `ui/rectAnchor.ts`: `rectAnchor`/`rectAnchorIfConnected` + `useAnchoredPosition` (mide el popover tras montar con `ResizeObserver`, sigue al ancla en scroll/resize vía `getAnchor` opcional y clampa al viewport); lo usan `SlashMenu`, `BlockMenu`, `PageMenu` e `IconPicker`.
+   - `editorStore.cancelLoad(pageId)` invalida cargas de páginas borradas (devuelve un `restore`); `deletePage` revalida el reset del editor y recupera la carga si el IPC falla.
+   - Tests: 160 unit (incluidos `tests/pageTree.test.ts`, `tests/pagesStore.test.ts` y `tests/rectAnchor.test.ts`) y 37 checks E2E (`e2e/phase5.e2e.cjs`, mismos comandos que la fase 3; la regresión de anclaje de popovers está en `e2e/anchor-tracking.e2e.cjs`, 18 checks).
 6. **Búsqueda y pulido** — Ctrl+K, theme, empaquetado con electron-builder
 7. **Futuro** (post-MVP) — rich text inline (segmentos con marcas), tablas, gráficas, export MD, sync
 

@@ -7,14 +7,15 @@ import { useAnchoredPosition } from './rectAnchor'
 interface IconPickerProps {
   anchor: RectAnchor
   current: string | null
+  getAnchor?: () => RectAnchor
   onSelect: (icon: string | null) => void
   onClose: () => void
 }
 
 const PICKER_WIDTH = 296
 
-export function IconPicker({ anchor, current, onSelect, onClose }: IconPickerProps) {
-  const { ref, style } = useAnchoredPosition(anchor)
+export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: IconPickerProps) {
+  const { ref, style } = useAnchoredPosition(anchor, { getAnchor })
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {

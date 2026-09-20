@@ -7,14 +7,15 @@ import { useAnchoredPosition } from './rectAnchor'
 
 interface SlashMenuProps {
   anchor: RectAnchor
+  getAnchor?: () => RectAnchor
   onSelect: (type: BlockType) => void
   onClose: (query: string) => void
 }
 
-export function SlashMenu({ anchor, onSelect, onClose }: SlashMenuProps) {
+export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuProps) {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
-  const { ref: listRef, style } = useAnchoredPosition(anchor)
+  const { ref: listRef, style } = useAnchoredPosition(anchor, { getAnchor })
   const queryRef = useRef(query)
   const activeRef = useRef(activeIndex)
   const commands = useMemo(() => filterSlashCommands(query), [query])

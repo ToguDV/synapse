@@ -5,7 +5,7 @@ import { buildPageTree, collectDescendantIds, type PageNode } from '../store/pag
 import { ConfirmDialog } from './ConfirmDialog'
 import { IconPicker } from './IconPicker'
 import { PageMenu } from './PageMenu'
-import { rectAnchor } from './rectAnchor'
+import { rectAnchor, rectAnchorIfConnected } from './rectAnchor'
 
 function RenameInput({
   initial,
@@ -54,7 +54,7 @@ interface PageTreeItemProps {
   onStartRename: (id: string) => void
   onRenameCommit: (id: string, title: string) => void
   onRenameCancel: () => void
-  onOpenMenu: (pageId: string, anchor: RectAnchor) => void
+  onOpenMenu: (pageId: string, source: HTMLButtonElement) => void
 }
 
 function PageTreeItem({
@@ -79,7 +79,7 @@ function PageTreeItem({
 
   const openMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
-    onOpenMenu(page.id, rectAnchor(event.currentTarget))
+    onOpenMenu(page.id, event.currentTarget)
   }
 
   return (
@@ -176,8 +176,12 @@ export function Sidebar() {
   const deletePage = usePagesStore((state) => state.deletePage)
   const renamePage = usePagesStore((state) => state.renamePage)
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
-  const [menu, setMenu] = useState<{ pageId: string; anchor: RectAnchor } | null>(null)
-  const [iconFor, setIconFor] = useState<{ pageId: string; anchor: RectAnchor } | null>(null)
+  const [menu, setMenu] = useState<
+    { pageId: string; source: HTMLButtonElement; anchor: RectAnchor } | null
+  >(null)
+  const [iconFor, setIconFor] = useState<
+    { pageId: string; source: HTMLButtonElement; anchor: RectAnchor } | null
+  >(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const tree = useMemo(() => buildPageTree(pages), [pages])
@@ -213,8 +217,8 @@ export function Sidebar() {
               setRenamingId(null)
             }}
             onRenameCancel={() => setRenamingId(null)}
-            onOpenMenu={(pageId, anchor) => {
-              setMenu({ pageId, anchor })
+            onOpenMenu={(pageId, source) => {
+              setMenu({ pageId, source, anchor: rectAnchor(source) })
               setIconFor(null)
             }}
           />
@@ -224,9 +228,12 @@ export function Sidebar() {
         <PageMenu
           pageId={menuPage.id}
           anchor={menu.anchor}
+          getAnchor={() => rectAnchorIfConnected(menu.source, menu.anchor)}
           onRename={() => setRenamingId(menuPage.id)}
           onAddChild={() => void createPage(menuPage.id)}
-          onIcon={() => setIconFor({ pageId: menuPage.id, anchor: menu.anchor })}
+          onIcon={() =>
+            setIconFor({ pageId: menuPage.id, source: menu.source, anchor: menu.anchor })
+          }
           onDelete={() => setConfirmId(menuPage.id)}
           onClose={() => setMenu(null)}
         />
@@ -234,6 +241,7 @@ export function Sidebar() {
       {iconFor && iconPage && (
         <IconPicker
           anchor={iconFor.anchor}
+          getAnchor={() => rectAnchorIfConnected(iconFor.source, iconFor.anchor)}
           current={iconPage.icon}
           onSelect={(icon) => {
             setPageIcon(iconPage.id, icon)

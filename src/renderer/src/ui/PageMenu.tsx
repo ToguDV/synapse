@@ -7,6 +7,7 @@ import { useAnchoredPosition } from './rectAnchor'
 interface PageMenuProps {
   pageId: string
   anchor: RectAnchor
+  getAnchor?: () => RectAnchor
   onRename: () => void
   onAddChild: () => void
   onIcon: () => void
@@ -17,13 +18,14 @@ interface PageMenuProps {
 export function PageMenu({
   pageId,
   anchor,
+  getAnchor,
   onRename,
   onAddChild,
   onIcon,
   onDelete,
   onClose
 }: PageMenuProps) {
-  const { ref, style } = useAnchoredPosition(anchor, { align: 'right' })
+  const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
