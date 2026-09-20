@@ -8,8 +8,13 @@ files:
   - package.json
 asarUnpack:
   - node_modules/better-sqlite3/**
+artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage
     - deb
   category: Utility
+  maintainer: togu <togu@localhost>
+  synopsis: Editor de bloques estilo Notion
+  description: Editor de bloques offline-first con SQLite local.
+  syncDesktopName: true
