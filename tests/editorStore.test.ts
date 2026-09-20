@@ -170,6 +170,37 @@ describe('editorStore · cancelLoad', () => {
   })
 })
 
+describe('editorStore · focusBlock', () => {
+  it('enfoca al instante si la página ya está cargada', async () => {
+    installApi([makeBlock({ id: 'a' })])
+    await load()
+
+    state().focusBlock('p1', 'a')
+
+    expect(state().focusRequest).toMatchObject({ blockId: 'a', caret: 0 })
+  })
+
+  it('aplica el foco pendiente al terminar la carga de su página', async () => {
+    installApi([makeBlock({ id: 'a', content: '{"text":"Hola"}' })])
+
+    state().focusBlock('p1', 'a')
+    expect(state().focusRequest).toBeNull()
+
+    await load()
+
+    expect(state().focusRequest).toMatchObject({ blockId: 'a', caret: 0 })
+  })
+
+  it('no aplica un foco pendiente al cargar otra página', async () => {
+    installApi([makeBlock({ id: 'a', content: '{"text":"Hola"}' })])
+
+    state().focusBlock('p1', 'a')
+    await state().loadPage('p2')
+
+    expect(state().focusRequest).toBeNull()
+  })
+})
+
 describe('editorStore · edición', () => {
   it('setText actualiza el estado y guarda con debounce', async () => {
     const { blocks } = installApi([makeBlock({ id: 'a' })])

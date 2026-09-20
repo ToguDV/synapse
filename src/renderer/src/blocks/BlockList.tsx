@@ -124,6 +124,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   const [slash, setSlash] = useState<{ blockId: string; anchor: RectAnchor } | null>(null)
 
   useEffect(() => {
+    if (useEditorStore.getState().pageId === pageId) return
     void loadPage(pageId)
   }, [pageId, loadPage])
 
@@ -132,7 +133,10 @@ export function BlockList({ pageId }: { pageId: string }) {
     const element = document.querySelector<HTMLElement>(
       `[data-block-id="${CSS.escape(focusRequest.blockId)}"]`
     )
-    if (element) setCaretOffset(element, focusRequest.caret)
+    if (element) {
+      setCaretOffset(element, focusRequest.caret)
+      element.scrollIntoView({ block: 'nearest' })
+    }
     useEditorStore.getState().consumeFocus()
   }, [focusRequest])
 

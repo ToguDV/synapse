@@ -47,6 +47,15 @@
     }
   }
 
+  const blockText = (content) => {
+    try {
+      const parsed = JSON.parse(content)
+      return parsed && typeof parsed.text === 'string' ? parsed.text : ''
+    } catch {
+      return ''
+    }
+  }
+
   window.api = {
     versions: { electron: 'test', node: 'test' },
     pages: {
@@ -175,6 +184,40 @@
         const i = blocks.findIndex((x) => x.id === id)
         if (i >= 0) blocks.splice(i, 1)
         persist()
+      }
+    },
+    search: {
+      query: async (term, limit = 20) => {
+        calls.push(['search', term, limit])
+        const needle = String(term).trim().toLowerCase()
+        if (needle === '') return []
+        const pageHits = pages
+          .filter((p) => p.title.toLowerCase().includes(needle))
+          .sort((a, b) => b.updatedAt - a.updatedAt || a.position - b.position)
+          .slice(0, limit)
+          .map((p) => ({
+            kind: 'page',
+            pageId: p.id,
+            title: p.title,
+            icon: p.icon,
+            updatedAt: p.updatedAt
+          }))
+        const blockHits = blocks
+          .map((b) => ({ b, p: pages.find((x) => x.id === b.pageId) }))
+          .filter(({ b, p }) => p && blockText(b.content).toLowerCase().includes(needle))
+          .sort((x, y) => y.b.updatedAt - x.b.updatedAt || x.b.position - y.b.position)
+          .slice(0, limit)
+          .map(({ b, p }) => ({
+            kind: 'block',
+            blockId: b.id,
+            pageId: p.id,
+            pageTitle: p.title,
+            pageIcon: p.icon,
+            blockType: b.type,
+            text: blockText(b.content),
+            updatedAt: b.updatedAt
+          }))
+        return [...pageHits, ...blockHits]
       }
     }
   }

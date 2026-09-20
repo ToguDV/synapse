@@ -44,6 +44,7 @@ export interface EditorState {
   flush: () => Promise<void>
   setActiveBlock: (id: string | null) => void
   requestFocus: (blockId: string, caret?: number) => void
+  focusBlock: (pageId: string, blockId: string) => void
   consumeFocus: () => void
   setText: (id: string, text: string) => void
   applyInput: (id: string, text: string) => void
@@ -83,6 +84,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
   let loadQueue: Promise<void> = Promise.resolve()
   let lastTextEdit: { blockId: string; at: number } | null = null
   const cancelledLoads = new Set<string>()
+  let pendingBlockFocus: { pageId: string; blockId: string } | null = null
 
   const schedulePersist = (): void => {
     clearTimeout(persistTimer)
@@ -118,6 +120,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     persisted = new Map()
     persistedPageId = null
     lastTextEdit = null
+    pendingBlockFocus = null
     set({
       pageId: null,
       blocks: [],
@@ -142,6 +145,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
   const performLoad = async (pageId: string): Promise<void> => {
     await get().flush()
     if (cancelledLoads.has(pageId)) return
+    if (pendingBlockFocus && pendingBlockFocus.pageId !== pageId) pendingBlockFocus = null
     persisted = new Map()
     persistedPageId = pageId
     lastTextEdit = null
@@ -189,8 +193,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
         }),
         loading: false
       })
+      if (pendingBlockFocus && pendingBlockFocus.pageId === pageId) {
+        const { blockId } = pendingBlockFocus
+        pendingBlockFocus = null
+        get().requestFocus(blockId, 0)
+      }
     } catch (error) {
       if (get().pageId === pageId) set({ loading: false })
+      if (pendingBlockFocus?.pageId === pageId) pendingBlockFocus = null
       throw error
     }
   }
@@ -295,6 +305,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
       set((state) => ({
         focusRequest: { blockId, caret, nonce: (state.focusRequest?.nonce ?? 0) + 1 }
       })),
+
+    focusBlock: (pageId, blockId) => {
+      if (get().pageId === pageId && !get().loading) {
+        get().requestFocus(blockId, 0)
+        return
+      }
+      pendingBlockFocus = { pageId, blockId }
+    },
 
     consumeFocus: () => set({ focusRequest: null }),
 

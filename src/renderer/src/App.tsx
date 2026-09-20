@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { SearchResult } from '../../shared/types'
 import type { RectAnchor } from './editor/types'
+import { useEditorStore } from './editor/editorStore'
 import { usePagesStore } from './store/pagesStore'
 import { Sidebar } from './ui/Sidebar'
 import { BlockList } from './blocks/BlockList'
 import { Breadcrumbs } from './ui/Breadcrumbs'
 import { IconPicker } from './ui/IconPicker'
+import { SearchPalette } from './ui/SearchPalette'
 import { rectAnchor, rectAnchorIfConnected } from './ui/rectAnchor'
 import { fitTitleFontSize, TITLE_FONT_MAX, titleIconOffset, titleLineHeight } from './ui/titleFit'
 
@@ -31,6 +34,7 @@ function App() {
   const initialize = usePagesStore((state) => state.initialize)
   const pages = usePagesStore((state) => state.pages)
   const activePageId = usePagesStore((state) => state.activePageId)
+  const selectPage = usePagesStore((state) => state.selectPage)
   const renamePage = usePagesStore((state) => state.renamePage)
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
   const activePage = pages.find((page) => page.id === activePageId) ?? null
@@ -38,11 +42,34 @@ function App() {
   const titleRef = useRef<HTMLTextAreaElement>(null)
   const [iconAnchor, setIconAnchor] = useState<RectAnchor | null>(null)
   const [titleSize, setTitleSize] = useState(TITLE_FONT_MAX)
+  const [searchOpen, setSearchOpen] = useState(false)
   const title = activePage?.title ?? ''
 
   useEffect(() => {
     void initialize()
   }, [initialize])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+      if (event.key.toLowerCase() !== 'k') return
+      event.preventDefault()
+      setSearchOpen(true)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const navigateToResult = useCallback(
+    (result: SearchResult): void => {
+      setSearchOpen(false)
+      selectPage(result.pageId)
+      if (result.kind === 'block') {
+        useEditorStore.getState().focusBlock(result.pageId, result.blockId)
+      }
+    },
+    [selectPage]
+  )
 
   const syncTitle = useCallback(() => {
     const el = titleRef.current
@@ -76,7 +103,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-neutral-900 text-neutral-100">
-      <Sidebar />
+      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
       <main className="flex flex-1 flex-col overflow-y-auto">
         {!ready || !activePage ? (
           <p className="mt-24 self-center text-sm text-neutral-500">Cargando…</p>
@@ -143,6 +170,9 @@ function App() {
           </div>
         )}
       </main>
+      {searchOpen && (
+        <SearchPalette onNavigate={navigateToResult} onClose={() => setSearchOpen(false)} />
+      )}
     </div>
   )
 }

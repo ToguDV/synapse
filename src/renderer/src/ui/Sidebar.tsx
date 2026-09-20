@@ -170,7 +170,7 @@ function PageTreeItem({
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const pages = usePagesStore((state) => state.pages)
   const createPage = usePagesStore((state) => state.createPage)
   const deletePage = usePagesStore((state) => state.deletePage)
@@ -204,6 +204,17 @@ export function Sidebar() {
           +
         </button>
       </div>
+      <button
+        type="button"
+        data-search-trigger
+        onClick={onOpenSearch}
+        title="Buscar (Ctrl+K)"
+        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-neutral-400 transition hover:bg-neutral-800 hover:text-neutral-100"
+      >
+        <span aria-hidden>🔍</span>
+        <span className="flex-1 text-left">Buscar</span>
+        <span className="text-xs text-neutral-600">Ctrl K</span>
+      </button>
       <nav className="flex-1 overflow-y-auto px-2 pb-3">
         {tree.map((node) => (
           <PageTreeItem

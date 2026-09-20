@@ -9,6 +9,7 @@ import {
 } from '../../shared/types'
 import { createPagesRepo } from '../db/repositories/pages'
 import { createBlocksRepo } from '../db/repositories/blocks'
+import { createSearchRepo } from '../db/repositories/search'
 
 function requireString(value: unknown, name: string): string {
   if (typeof value !== 'string') throw new Error(`${name} debe ser un string`)
@@ -72,6 +73,7 @@ function parseBlockPatch(value: unknown): BlockUpdatePatch {
 export function registerIpc(db: Database.Database): void {
   const pages = createPagesRepo(db)
   const blocks = createBlocksRepo(db)
+  const search = createSearchRepo(db)
 
   ipcMain.handle('pages:list', () => pages.list())
   ipcMain.handle('pages:get', (_event, id: unknown) => pages.get(requireId(id)))
@@ -108,4 +110,13 @@ export function registerIpc(db: Database.Database): void {
     )
   })
   ipcMain.handle('blocks:remove', (_event, id: unknown) => blocks.remove(requireId(id)))
+
+  ipcMain.handle('search:query', (_event, payload: unknown) => {
+    const { term, limit } = (payload ?? {}) as Record<string, unknown>
+    const text = requireString(term, 'term').trim()
+    if (text.length === 0) return []
+    const parsedLimit =
+      limit === undefined ? 20 : Math.min(50, Math.max(1, Math.floor(requireNumber(limit, 'limit'))))
+    return search.search(text, parsedLimit)
+  })
 }

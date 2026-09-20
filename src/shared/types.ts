@@ -56,6 +56,27 @@ export interface BlockUpdatePatch {
   indent?: number
 }
 
+export interface SearchPageResult {
+  kind: 'page'
+  pageId: string
+  title: string
+  icon: string | null
+  updatedAt: number
+}
+
+export interface SearchBlockResult {
+  kind: 'block'
+  blockId: string
+  pageId: string
+  pageTitle: string
+  pageIcon: string | null
+  blockType: BlockType
+  text: string
+  updatedAt: number
+}
+
+export type SearchResult = SearchPageResult | SearchBlockResult
+
 export interface Api {
   versions: {
     electron: string
@@ -76,5 +97,8 @@ export interface Api {
     update: (id: string, patch: BlockUpdatePatch) => Promise<Block>
     reorder: (pageId: string, orderedIds: string[]) => Promise<Block[]>
     remove: (id: string) => Promise<void>
+  }
+  search: {
+    query: (term: string, limit?: number) => Promise<SearchResult[]>
   }
 }

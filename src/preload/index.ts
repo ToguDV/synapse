@@ -26,6 +26,9 @@ const api: Api = {
     update: (id, patch) => ipcRenderer.invoke('blocks:update', { id, patch }),
     reorder: (pageId, orderedIds) => ipcRenderer.invoke('blocks:reorder', { pageId, orderedIds }),
     remove: (id) => ipcRenderer.invoke('blocks:remove', id)
+  },
+  search: {
+    query: (term, limit) => ipcRenderer.invoke('search:query', { term, limit })
   }
 }
 
