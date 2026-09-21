@@ -79,6 +79,27 @@ Measured pairs, not guesses (WCAG 2.1 relative luminance):
 | Latte · subtext on canvas               | 5.5:1  | AA       |
 | Latte · white on accent (primary)       | 5.4:1  | AA       |
 | Latte · faintest on canvas              | 2.3:1  | Non-text |
+| Latte · icon tones on panel (min)       | 3.8:1  | Non-text |
+| Mocha · icon tones on panel (min)       | 7.6:1  | AAA      |
+
+### Iconography
+
+Chrome icons are 2px line SVGs on a 24px viewBox with a semantic tone — each action carries the hue
+of its job, navigation stays neutral (inherits text color). No decorative rainbow.
+
+| Tone     | Icons                  | Latte                 | Mocha         |
+| -------- | ---------------------- | --------------------- | ------------- |
+| Accent   | search, plus, swap     | `--accent`            | `--accent`    |
+| Sky      | move arrows            | `--sky` 80% + black   | `--sky`       |
+| Sapphire | copy, monitor, doc     | `--sapphire` 80% + black | `--sapphire` |
+| Info     | moon (system)          | `--info`              | `--info`      |
+| Warning  | sun, pencil, smile     | `--warning` 80% + black | `--warning` |
+| Success  | check                  | `--success` 80% + black | `--success` |
+| Error    | trash, x               | `--error`             | `--error`     |
+
+Sizes run 12–17px. In Latte the pastel hues are mixed with black until they clear 3:1 against
+`--panel`; in Mocha they pass as-is. Tones live in `--icon-*` (a `[data-tone]` rule, so Tailwind
+utilities can still override); menu tiles use the tone at 12% fill / 26% border.
 
 ## Typography
 

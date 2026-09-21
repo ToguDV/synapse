@@ -126,7 +126,7 @@ function App() {
                 onClick={() => setSearchOpen(true)}
                 className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted transition hover:bg-hover hover:text-ink"
               >
-                <Icon name="search" size={14} />
+                <Icon name="search" size={15} />
                 {t('sidebar.search')}
                 <Kbd className="ml-1">Ctrl K</Kbd>
               </button>

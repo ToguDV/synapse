@@ -61,13 +61,15 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <>
           <MenuItem
             action="convert"
-            icon={<Icon name="swap" size={15} />}
+            icon={<Icon name="swap" size={16} />}
+            tone="accent"
             label={t('blockMenu.convert')}
             onSelect={() => setView('convert')}
           />
           <MenuItem
             action="duplicate"
-            icon={<Icon name="copy" size={15} />}
+            icon={<Icon name="copy" size={16} />}
+            tone="sapphire"
             label={t('blockMenu.duplicate')}
             hint="Ctrl+D"
             onSelect={() => {
@@ -77,7 +79,8 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           />
           <MenuItem
             action="move-up"
-            icon={<Icon name="arrow-up" size={15} />}
+            icon={<Icon name="arrow-up" size={16} />}
+            tone="sky"
             label={t('blockMenu.moveUp')}
             disabled={index === 0}
             onSelect={() => {
@@ -87,7 +90,8 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           />
           <MenuItem
             action="move-down"
-            icon={<Icon name="arrow-down" size={15} />}
+            icon={<Icon name="arrow-down" size={16} />}
+            tone="sky"
             label={t('blockMenu.moveDown')}
             disabled={index === blocks.length - 1}
             onSelect={() => {
@@ -98,7 +102,8 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <div className="my-1 border-t border-border" />
           <MenuItem
             action="delete"
-            icon={<Icon name="trash" size={15} />}
+            icon={<Icon name="trash" size={16} />}
+            tone="error"
             label={t('blockMenu.delete')}
             hint="Del"
             danger
@@ -112,7 +117,8 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <>
           <MenuItem
             action="back"
-            icon={<Icon name="arrow-left" size={15} />}
+            icon={<Icon name="arrow-left" size={16} />}
+            tone="sky"
             label={t('blockMenu.convert')}
             onSelect={() => setView('main')}
           />

@@ -39,6 +39,16 @@
   --sapphire: #209fb5;
   --sky: #04a5e5;
 
+  /* Tonos de icono: en Latte los pasteles que no llegan a 3:1 sobre `--panel`
+     se oscurecen (sky, sapphire, warning, success); el resto va tal cual. */
+  --icon-accent: var(--accent);
+  --icon-sky: color-mix(in oklab, var(--sky) 80%, black);
+  --icon-sapphire: color-mix(in oklab, var(--sapphire) 80%, black);
+  --icon-info: var(--info);
+  --icon-warning: color-mix(in oklab, var(--warning) 80%, black);
+  --icon-success: color-mix(in oklab, var(--success) 80%, black);
+  --icon-error: var(--error);
+
   --backdrop: rgb(76 79 105 / 0.3);
   --shadow-pop: 0 8px 20px rgb(76 79 105 / 0.14);
   --shadow-modal: 0 24px 48px rgb(76 79 105 / 0.2);
@@ -78,6 +88,15 @@
   --info: #89b4fa;
   --sapphire: #74c7ec;
   --sky: #89dceb;
+
+  /* En Mocha los pasteles tienen contraste de sobra sobre panel/superficie. */
+  --icon-accent: var(--accent);
+  --icon-sky: var(--sky);
+  --icon-sapphire: var(--sapphire);
+  --icon-info: var(--info);
+  --icon-warning: var(--warning);
+  --icon-success: var(--success);
+  --icon-error: var(--error);
 
   --backdrop: rgb(17 17 27 / 0.55);
   --shadow-pop: 0 8px 20px rgb(0 0 0 / 0.35);
@@ -188,6 +207,30 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 4px;
+  }
+
+  /* Tono por defecto de los iconos (Icon.tsx). Al vivir en `base`, cualquier
+     utilidad Tailwind (`text-current`, `text-error`…) sigue ganando. */
+  [data-tone='accent'] {
+    color: var(--icon-accent);
+  }
+  [data-tone='sky'] {
+    color: var(--icon-sky);
+  }
+  [data-tone='sapphire'] {
+    color: var(--icon-sapphire);
+  }
+  [data-tone='info'] {
+    color: var(--icon-info);
+  }
+  [data-tone='warning'] {
+    color: var(--icon-warning);
+  }
+  [data-tone='success'] {
+    color: var(--icon-success);
+  }
+  [data-tone='error'] {
+    color: var(--icon-error);
   }
 
   @media (prefers-reduced-motion: reduce) {

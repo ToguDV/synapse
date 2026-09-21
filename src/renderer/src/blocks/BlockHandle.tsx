@@ -17,10 +17,10 @@ export function BlockHandle({ visible, active = false, onPointerDown }: BlockHan
       aria-label={t('blocks.handle.label')}
       onPointerDown={onPointerDown}
       className={`absolute top-1 -left-7 flex h-6 w-6 cursor-grab items-center justify-center rounded-md transition hover:bg-hover hover:text-ink active:cursor-grabbing ${
-        active ? 'text-muted' : 'text-faint'
+        active ? 'text-ink' : 'text-muted'
       } ${visible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
     >
-      <Icon name="grip" size={16} />
+      <Icon name="grip" size={17} />
     </button>
   )
 }

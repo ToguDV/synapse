@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import type { IconTone } from './Icon'
 import { Kbd } from './Kbd'
 
 export function MenuItem({
@@ -7,6 +8,7 @@ export function MenuItem({
   hint,
   danger,
   disabled,
+  tone,
   action,
   onSelect
 }: {
@@ -15,9 +17,18 @@ export function MenuItem({
   hint?: string
   danger?: boolean
   disabled?: boolean
+  tone?: IconTone
   action: string
   onSelect: () => void
 }) {
+  const toned = tone && tone !== 'neutral'
+  const tileStyle: CSSProperties | undefined = toned
+    ? {
+        borderColor: `color-mix(in srgb, var(--icon-${tone}) 26%, transparent)`,
+        background: `color-mix(in srgb, var(--icon-${tone}) 12%, transparent)`
+      }
+    : undefined
+
   return (
     <button
       type="button"
@@ -32,8 +43,9 @@ export function MenuItem({
       }`}
     >
       <span
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-panel font-mono text-2xs font-semibold ${
-          danger ? 'text-error' : 'text-ink-soft'
+        style={tileStyle}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border font-mono text-2xs font-semibold ${
+          toned ? '' : `border-border bg-panel ${danger ? 'text-error' : 'text-ink-soft'}`
         }`}
       >
         {icon}

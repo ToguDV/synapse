@@ -78,7 +78,7 @@ function ThemeSegmented() {
             onClick={() => setPreference(option)}
             className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-muted transition hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-[0_1px_3px_rgb(0_0_0/0.18)]"
           >
-            <Icon name={meta.icon} size={14} />
+            <Icon name={meta.icon} size={15} />
           </button>
         )
       })}
@@ -202,9 +202,9 @@ function PageTreeItem({
             data-expanded={expanded}
             aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
             onClick={() => toggleExpanded(page.id)}
-            className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
+            className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
           >
-            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={13} />
+            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={14} />
           </button>
         ) : (
           <span className="h-5 w-3.5 shrink-0" />
@@ -243,18 +243,18 @@ function PageTreeItem({
           data-page-action="add-child"
           title={t('sidebar.addSubpage')}
           onClick={() => void createPage(page.id)}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
-          <Icon name="plus" size={13} />
+          <Icon name="plus" size={14} />
         </button>
         <button
           type="button"
           data-page-action="open-menu"
           title={t('sidebar.pageOptions')}
           onClick={openMenu}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
-          <Icon name="more" size={13} />
+          <Icon name="more" size={14} />
         </button>
       </div>
       {hasChildren && expanded && (
@@ -438,7 +438,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
             SY
           </span>
           <span className="flex-1 truncate text-sm font-semibold text-ink">Synapse</span>
-          <Icon name="chev-down" size={14} className="text-faint" />
+          <Icon name="chev-down" size={15} className="text-muted" />
         </div>
         <button
           type="button"
@@ -447,7 +447,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           title={t('sidebar.searchTooltip')}
           className="mt-2 flex h-7 w-full items-center gap-2 rounded-md border border-border bg-surface px-2 text-xs text-faint transition hover:border-border-strong hover:text-muted"
         >
-          <Icon name="search" size={13} />
+          <Icon name="search" size={14} />
           <span className="flex-1 text-left">{t('sidebar.search')}</span>
           <Kbd>Ctrl K</Kbd>
         </button>
@@ -462,9 +462,9 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
             data-page-action="new-root"
             onClick={() => void createPage(null)}
             title={t('sidebar.newPage')}
-            className="flex h-5 w-5 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
+            className="flex h-5 w-5 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
           >
-            <Icon name="plus" size={13} />
+            <Icon name="plus" size={14} />
           </button>
         </div>
         <nav className="min-h-0 flex-1 overflow-y-auto">
@@ -543,7 +543,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           onClick={onOpenSearch}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
         >
-          <Icon name="search" size={14} />
+          <Icon name="search" size={15} />
         </button>
         <ThemeSegmented />
       </div>

@@ -66,6 +66,15 @@
   --error: var(--red);
   --info: var(--blue);
 
+  /* En Mocha los pasteles tienen contraste de sobra sobre panel/superficie. */
+  --icon-accent: var(--accent);
+  --icon-sky: var(--sky);
+  --icon-sapphire: var(--sapphire);
+  --icon-info: var(--info);
+  --icon-warning: var(--warning);
+  --icon-success: var(--success);
+  --icon-error: var(--error);
+
   --shadow-pop: 0 8px 20px rgb(0 0 0 / 0.35);
   --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.45);
   --shadow-frame: 0 30px 60px rgb(0 0 0 / 0.4);
@@ -133,6 +142,16 @@
   --error: var(--red);
   --info: var(--blue);
 
+  /* Tonos de icono: en Latte los pasteles que no llegan a 3:1 sobre `--panel`
+     se oscurecen (sky, sapphire, warning, success); el resto va tal cual. */
+  --icon-accent: var(--accent);
+  --icon-sky: color-mix(in oklab, var(--sky) 80%, black);
+  --icon-sapphire: color-mix(in oklab, var(--sapphire) 80%, black);
+  --icon-info: var(--info);
+  --icon-warning: color-mix(in oklab, var(--warning) 80%, black);
+  --icon-success: color-mix(in oklab, var(--green) 80%, black);
+  --icon-error: var(--error);
+
   --shadow-pop: 0 8px 20px rgb(76 79 105 / 0.14);
   --shadow-modal: 0 24px 48px rgb(76 79 105 / 0.2);
   --shadow-frame: 0 30px 60px rgb(76 79 105 / 0.18);
@@ -176,19 +195,42 @@ svg.i {
   flex: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .i--sm {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
 .i--lg {
   width: 18px;
   height: 18px;
+}
+
+/* Tonos semánticos de icono (paridad con la app). */
+.i--accent {
+  color: var(--icon-accent);
+}
+.i--sky {
+  color: var(--icon-sky);
+}
+.i--sapphire {
+  color: var(--icon-sapphire);
+}
+.i--info {
+  color: var(--icon-info);
+}
+.i--warning {
+  color: var(--icon-warning);
+}
+.i--success {
+  color: var(--icon-success);
+}
+.i--error {
+  color: var(--icon-error);
 }
 
 .mono {

@@ -22,8 +22,8 @@ export function TodoStatusBox({
       data-status-box={status}
       className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border-[1.5px] transition ${STATUS_CLASSES[status]} ${className}`}
     >
-      {status === 'done' && <Icon name="check" size={11} className="text-current" />}
-      {status === 'cancelled' && <Icon name="x" size={11} className="text-current" />}
+      {status === 'done' && <Icon name="check" size={12} className="text-current" />}
+      {status === 'cancelled' && <Icon name="x" size={12} className="text-current" />}
     </span>
   )
 }

@@ -29,7 +29,7 @@ export function Breadcrumbs({ pageId }: { pageId: string }) {
             {page.icon && <span className="mr-1">{page.icon}</span>}
             {page.title || t('common.untitled')}
           </button>
-          <Icon name="chev-right" size={12} className="shrink-0 text-faintest" />
+          <Icon name="chev-right" size={13} className="shrink-0 text-muted" />
         </span>
       ))}
       <span data-breadcrumb-current className="truncate px-[7px] py-[3px] font-medium text-ink-soft">

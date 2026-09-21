@@ -103,7 +103,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
         className="flex max-h-[70vh] w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-modal"
       >
         <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-3.5">
-          <Icon name="search" size={16} className="shrink-0 text-faint" />
+          <Icon name="search" size={17} className="shrink-0" />
           <input
             data-search-input
             autoFocus

@@ -55,7 +55,7 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
           onClick={() => onSelect(null)}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-hover hover:text-ink"
         >
-          <Icon name="x" size={14} /> {t('iconPicker.remove')}
+          <Icon name="x" size={15} tone="neutral" /> {t('iconPicker.remove')}
         </button>
       )}
       <div className="grid grid-cols-8 gap-0.5 p-1">

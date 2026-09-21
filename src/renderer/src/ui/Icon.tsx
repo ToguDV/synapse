@@ -1,5 +1,15 @@
 import type { ReactNode } from 'react'
 
+export type IconTone =
+  | 'neutral'
+  | 'accent'
+  | 'sky'
+  | 'sapphire'
+  | 'info'
+  | 'warning'
+  | 'success'
+  | 'error'
+
 export type IconName =
   | 'synapse'
   | 'search'
@@ -24,6 +34,34 @@ export type IconName =
   | 'doc'
   | 'pencil'
   | 'smile'
+
+/* Tono por defecto de cada icono. El color lo aplica `main.css` vía
+   `[data-tone]`, así que las utilidades Tailwind pueden sobrescribirlo. */
+const ICON_TONES: Record<IconName, IconTone> = {
+  synapse: 'accent',
+  search: 'accent',
+  plus: 'accent',
+  'chev-right': 'neutral',
+  'chev-down': 'neutral',
+  moon: 'info',
+  sun: 'warning',
+  monitor: 'sapphire',
+  settings: 'neutral',
+  more: 'neutral',
+  grip: 'neutral',
+  check: 'success',
+  x: 'error',
+  enter: 'neutral',
+  trash: 'error',
+  copy: 'sapphire',
+  'arrow-up': 'sky',
+  'arrow-down': 'sky',
+  'arrow-left': 'sky',
+  swap: 'accent',
+  doc: 'sapphire',
+  pencil: 'warning',
+  smile: 'warning'
+}
 
 const PATHS: Record<IconName, ReactNode> = {
   synapse: (
@@ -119,20 +157,25 @@ const PATHS: Record<IconName, ReactNode> = {
 export function Icon({
   name,
   size = 16,
+  tone,
   className
 }: {
   name: IconName
   size?: number
+  tone?: IconTone
   className?: string
 }) {
+  const effectiveTone = tone ?? ICON_TONES[name]
   return (
     <svg
+      data-icon={name}
+      data-tone={effectiveTone === 'neutral' ? undefined : effectiveTone}
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

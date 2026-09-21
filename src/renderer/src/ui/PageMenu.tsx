@@ -60,7 +60,8 @@ export function PageMenu({
     >
       <MenuItem
         action="rename"
-        icon={<Icon name="pencil" size={15} />}
+        icon={<Icon name="pencil" size={16} />}
+        tone="warning"
         label={t('pageMenu.rename')}
         onSelect={() => {
           onRename()
@@ -69,7 +70,8 @@ export function PageMenu({
       />
       <MenuItem
         action="add-child"
-        icon={<Icon name="plus" size={15} />}
+        icon={<Icon name="plus" size={16} />}
+        tone="accent"
         label={t('pageMenu.addSubpage')}
         onSelect={() => {
           onAddChild()
@@ -78,7 +80,8 @@ export function PageMenu({
       />
       <MenuItem
         action="icon"
-        icon={<Icon name="smile" size={15} />}
+        icon={<Icon name="smile" size={16} />}
+        tone="warning"
         label={t('pageMenu.changeIcon')}
         onSelect={() => {
           onIcon()
@@ -88,7 +91,8 @@ export function PageMenu({
       <div className="my-1 border-t border-border" />
       <MenuItem
         action="delete"
-        icon={<Icon name="trash" size={15} />}
+        icon={<Icon name="trash" size={16} />}
+        tone="error"
         label={t('pageMenu.delete')}
         danger
         onSelect={() => {
