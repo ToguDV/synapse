@@ -39,9 +39,10 @@ describe('pages repo', () => {
     const a = pages.create({ title: 'A' })
     const b = pages.create({ title: 'B' })
     const c = pages.create({ title: 'C' })
-    pages.move(a.id, { parentId: null, position: 5 })
+    pages.move(a.id, { parentId: null, position: 1 })
 
-    expect(pages.list().map((page) => page.id)).toEqual([b.id, c.id, a.id])
+    expect(pages.list().map((page) => page.id)).toEqual([b.id, a.id, c.id])
+    expect(pages.list().map((page) => page.position)).toEqual([0, 1, 2])
   })
 
   it('renombra y asigna icono', () => {
@@ -54,14 +55,37 @@ describe('pages repo', () => {
     expect(pages.get(page.id)?.title).toBe('Nueva')
   })
 
-  it('mueve una página a otro padre y posición', () => {
+  it('mueve una página a otro padre recortando la posición y renumerando ambos padres', () => {
     const pages = createPagesRepo(db)
-    const parent = pages.create({ title: 'Padre' })
-    const page = pages.create({ title: 'Hija' })
+    const source = pages.create({ title: 'Origen' })
+    const moving = pages.create({ parentId: source.id, title: 'Hija' })
+    const sibling = pages.create({ parentId: source.id, title: 'Hermana' })
+    const target = pages.create({ title: 'Destino' })
+    const first = pages.create({ parentId: target.id, title: 'Primera' })
+    const second = pages.create({ parentId: target.id, title: 'Segunda' })
 
-    const moved = pages.move(page.id, { parentId: parent.id, position: 3 })
+    const moved = pages.move(moving.id, { parentId: target.id, position: 1 })
 
-    expect(moved).toMatchObject({ parentId: parent.id, position: 3 })
+    expect(moved).toMatchObject({ parentId: target.id, position: 1 })
+    const byId = new Map(pages.list().map((page) => [page.id, page]))
+    expect(byId.get(first.id)?.position).toBe(0)
+    expect(byId.get(moving.id)?.position).toBe(1)
+    expect(byId.get(second.id)?.position).toBe(2)
+    expect(byId.get(sibling.id)?.position).toBe(0)
+
+    const clamped = pages.move(sibling.id, { parentId: target.id, position: 99 })
+    expect(clamped.position).toBe(3)
+  })
+
+  it('rechaza mover una página bajo sí misma o un descendiente', () => {
+    const pages = createPagesRepo(db)
+    const root = pages.create({ title: 'Raíz' })
+    const child = pages.create({ parentId: root.id })
+    const grandchild = pages.create({ parentId: child.id })
+
+    expect(() => pages.move(root.id, { parentId: root.id, position: 0 })).toThrow(/subtree/i)
+    expect(() => pages.move(root.id, { parentId: grandchild.id, position: 0 })).toThrow(/subtree/i)
+    expect(() => pages.move(child.id, { parentId: 'no-existe', position: 0 })).toThrow(/not found/i)
   })
 
   it('devuelve null y lanza al operar sobre una página inexistente', () => {

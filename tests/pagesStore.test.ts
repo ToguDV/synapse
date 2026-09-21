@@ -49,8 +49,26 @@ function installApi(initial: Page[] = []) {
       }),
       move: vi.fn(async (id: string, input: { parentId: string | null; position: number }) => {
         const page = pages.find((candidate) => candidate.id === id)!
+        const previousParent = page.parentId
         page.parentId = input.parentId
-        page.position = input.position
+        const byTree = (a: Page, b: Page) =>
+          a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
+        const siblings = pages
+          .filter((candidate) => candidate.parentId === input.parentId && candidate.id !== id)
+          .sort(byTree)
+        const index = Math.max(0, Math.min(input.position, siblings.length))
+        siblings.splice(index, 0, page)
+        siblings.forEach((candidate, position) => {
+          candidate.position = position
+        })
+        if (previousParent !== input.parentId) {
+          pages
+            .filter((candidate) => candidate.parentId === previousParent)
+            .sort(byTree)
+            .forEach((candidate, position) => {
+              candidate.position = position
+            })
+        }
         return { ...page }
       }),
       remove: vi.fn(async (id: string) => {
@@ -294,6 +312,82 @@ describe('pagesStore', () => {
 
     await vi.advanceTimersByTimeAsync(500)
     expect(api.pages.rename).toHaveBeenCalledWith('root', 'Nueva')
+  })
+
+  it('movePage reordena en optimista y confirma con el IPC', async () => {
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 }),
+      makePage({ id: 'c', position: 2 })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+
+    await usePagesStore.getState().movePage('c', null, 0)
+
+    expect(api.pages.move).toHaveBeenCalledWith('c', { parentId: null, position: 0 })
+    const pages = usePagesStore.getState().pages
+    const byId = new Map(pages.map((page) => [page.id, page]))
+    expect(byId.get('c')?.position).toBe(0)
+    expect(byId.get('a')?.position).toBe(1)
+    expect(byId.get('b')?.position).toBe(2)
+  })
+
+  it('movePage anida en otro padre, lo expande y renumera ambos', async () => {
+    const { api } = installApi([
+      makePage({ id: 'root' }),
+      makePage({ id: 'target' }),
+      makePage({ id: 'child', parentId: 'target', position: 0 })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    usePagesStore.setState({ expandedIds: [] })
+
+    await usePagesStore.getState().movePage('root', 'target', 99)
+
+    expect(api.pages.move).toHaveBeenCalledWith('root', { parentId: 'target', position: 99 })
+    const state = usePagesStore.getState()
+    expect(state.expandedIds).toContain('target')
+    expect(state.pages.find((page) => page.id === 'root')).toMatchObject({
+      parentId: 'target',
+      position: 1
+    })
+    expect(state.pages.find((page) => page.id === 'child')?.position).toBe(0)
+  })
+
+  it('movePage no llama al IPC en no-ops ni en movimientos inválidos', async () => {
+    const { api } = installApi([
+      makePage({ id: 'root' }),
+      makePage({ id: 'child', parentId: 'root' }),
+      makePage({ id: 'grandchild', parentId: 'child' })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+
+    await usePagesStore.getState().movePage('child', 'root', 0)
+    await usePagesStore.getState().movePage('root', 'grandchild', 0)
+    await usePagesStore.getState().movePage('zz', null, 0)
+
+    expect(api.pages.move).not.toHaveBeenCalled()
+  })
+
+  it('movePage revierte el estado optimista si el IPC falla', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 })
+    ])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    api.pages.move.mockRejectedValueOnce(new Error('db caída'))
+
+    await usePagesStore.getState().movePage('b', null, 0)
+
+    expect(errorSpy).toHaveBeenCalled()
+    const pages = usePagesStore.getState().pages
+    const byId = new Map(pages.map((page) => [page.id, page]))
+    expect(byId.get('a')?.position).toBe(0)
+    expect(byId.get('b')?.position).toBe(1)
   })
 
   it('deletePage de una hoja selecciona al padre y la quita del estado', async () => {

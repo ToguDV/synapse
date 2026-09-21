@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type MutableRefObject,
+  type PointerEvent as ReactPointerEvent
+} from 'react'
 import type { ThemePreference } from '../../../shared/theme'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation, type MessageKey } from '../i18n'
@@ -13,6 +21,31 @@ import { PageMenu } from './PageMenu'
 import { rectAnchor, rectAnchorIfConnected } from './rectAnchor'
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
+
+type PageDropZone = 'before' | 'after' | 'inside'
+
+interface PendingPageDrag {
+  pageId: string
+  x: number
+  y: number
+}
+
+interface PageDragState {
+  pageId: string
+  overId: string | null
+  zone: PageDropZone
+}
+
+interface PageDropTarget {
+  id: string
+  zone: PageDropZone
+}
+
+const DRAG_THRESHOLD_PX = 4
+const AUTO_EXPAND_MS = 500
+
+const byPagePosition = (a: { position: number; createdAt: number; id: string }, b: typeof a): number =>
+  a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
 
 const THEME_META: Record<ThemePreference, { icon: IconName; labelKey: MessageKey }> = {
   system: { icon: 'monitor', labelKey: 'theme.system' },
@@ -97,20 +130,28 @@ interface PageTreeItemProps {
   node: PageNode
   depth: number
   renamingId: string | null
+  draggingId: string | null
+  drop: PageDropTarget | null
+  suppressClickRef: MutableRefObject<boolean>
   onStartRename: (id: string) => void
   onRenameCommit: (id: string, title: string) => void
   onRenameCancel: () => void
   onOpenMenu: (pageId: string, source: HTMLButtonElement) => void
+  onDragPointerDown: (pageId: string, event: ReactPointerEvent<HTMLButtonElement>) => void
 }
 
 function PageTreeItem({
   node,
   depth,
   renamingId,
+  draggingId,
+  drop,
+  suppressClickRef,
   onStartRename,
   onRenameCommit,
   onRenameCancel,
-  onOpenMenu
+  onOpenMenu,
+  onDragPointerDown
 }: PageTreeItemProps) {
   const { t } = useTranslation()
   const { page, children } = node
@@ -123,6 +164,8 @@ function PageTreeItem({
   const expanded = expandedIds.includes(page.id)
   const isActive = page.id === activePageId
   const isRenaming = renamingId === page.id
+  const isDragging = draggingId === page.id
+  const dropZone = drop?.id === page.id ? drop.zone : null
 
   const openMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
@@ -134,12 +177,24 @@ function PageTreeItem({
       <div
         data-page-id={page.id}
         data-page-depth={depth}
+        data-page-drop={dropZone ?? undefined}
+        data-page-dragging={isDragging ? 'true' : undefined}
         data-active={isActive}
         style={{ paddingLeft: depth * 12 }}
-        className={`group flex h-[30px] items-center gap-1 rounded-md pr-1 transition ${
-          isActive ? 'bg-selected text-ink' : 'text-muted hover:bg-hover hover:text-ink'
-        }`}
+        className={`group relative flex h-[30px] items-center gap-1 rounded-md pr-1 transition ${
+          dropZone === 'inside'
+            ? 'bg-selected text-ink ring-1 ring-inset ring-sapphire'
+            : isActive
+              ? 'bg-selected text-ink'
+              : 'text-muted hover:bg-hover hover:text-ink'
+        } ${isDragging ? 'opacity-40' : ''}`}
       >
+        {dropZone === 'before' && (
+          <span className="pointer-events-none absolute inset-x-1 -top-px h-0.5 rounded-full bg-sapphire" />
+        )}
+        {dropZone === 'after' && (
+          <span className="pointer-events-none absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-sapphire" />
+        )}
         {hasChildren ? (
           <button
             type="button"
@@ -164,7 +219,14 @@ function PageTreeItem({
           <button
             type="button"
             data-page-title
-            onClick={() => selectPage(page.id)}
+            onPointerDown={(event) => onDragPointerDown(page.id, event)}
+            onClick={() => {
+              if (suppressClickRef.current) {
+                suppressClickRef.current = false
+                return
+              }
+              selectPage(page.id)
+            }}
             onDoubleClick={() => onStartRename(page.id)}
             className="flex h-full min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-medium"
           >
@@ -203,10 +265,14 @@ function PageTreeItem({
               node={child}
               depth={depth + 1}
               renamingId={renamingId}
+              draggingId={draggingId}
+              drop={drop}
+              suppressClickRef={suppressClickRef}
               onStartRename={onStartRename}
               onRenameCommit={onRenameCommit}
               onRenameCancel={onRenameCancel}
               onOpenMenu={onOpenMenu}
+              onDragPointerDown={onDragPointerDown}
             />
           ))}
         </div>
@@ -230,7 +296,135 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   >(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [drag, setDrag] = useState<PageDragState | null>(null)
+  const pendingDragRef = useRef<PendingPageDrag | null>(null)
+  const dragRef = useRef<PageDragState | null>(null)
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressClickRef = useRef(false)
   const tree = useMemo(() => buildPageTree(pages), [pages])
+
+  useEffect(() => {
+    const clearExpandTimer = (): void => {
+      if (expandTimerRef.current !== null) {
+        clearTimeout(expandTimerRef.current)
+        expandTimerRef.current = null
+      }
+    }
+
+    const endDrag = (): void => {
+      clearExpandTimer()
+      document.body.classList.remove('select-none', 'cursor-grabbing')
+    }
+
+    const onMove = (event: PointerEvent) => {
+      const pending = pendingDragRef.current
+      if (!pending) return
+      if (
+        !dragRef.current &&
+        Math.hypot(event.clientX - pending.x, event.clientY - pending.y) < DRAG_THRESHOLD_PX
+      ) {
+        return
+      }
+      if (!dragRef.current) {
+        document.body.classList.add('select-none', 'cursor-grabbing')
+        suppressClickRef.current = true
+      }
+      const state = usePagesStore.getState()
+      const forbidden = new Set([
+        pending.pageId,
+        ...collectDescendantIds(state.pages, pending.pageId)
+      ])
+      const element = document.elementFromPoint(event.clientX, event.clientY)
+      const row = element instanceof Element ? element.closest('[data-page-id]') : null
+      const overId = row instanceof HTMLElement ? (row.dataset.pageId ?? null) : null
+      let next: PageDragState = { pageId: pending.pageId, overId: null, zone: 'before' }
+      if (overId && !forbidden.has(overId) && row instanceof HTMLElement) {
+        const rect = row.getBoundingClientRect()
+        const ratio = (event.clientY - rect.top) / Math.max(rect.height, 1)
+        next = {
+          pageId: pending.pageId,
+          overId,
+          zone: ratio < 0.3 ? 'before' : ratio > 0.7 ? 'after' : 'inside'
+        }
+      }
+      dragRef.current = next
+      setDrag(next)
+      clearExpandTimer()
+      if (next.overId && next.zone === 'inside') {
+        const targetId = next.overId
+        const { pages: current, expandedIds } = usePagesStore.getState()
+        const hasChildren = current.some((page) => page.parentId === targetId)
+        if (hasChildren && !expandedIds.includes(targetId)) {
+          expandTimerRef.current = setTimeout(() => {
+            expandTimerRef.current = null
+            usePagesStore.getState().toggleExpanded(targetId)
+          }, AUTO_EXPAND_MS)
+        }
+      }
+    }
+
+    const onUp = () => {
+      const pending = pendingDragRef.current
+      pendingDragRef.current = null
+      const active = dragRef.current
+      dragRef.current = null
+      endDrag()
+      setDrag(null)
+      if (!pending || !active) return
+      window.setTimeout(() => {
+        suppressClickRef.current = false
+      }, 0)
+      if (!active.overId) return
+      const state = usePagesStore.getState()
+      const target = state.pages.find((page) => page.id === active.overId)
+      if (!target) return
+      if (active.zone === 'inside') {
+        const count = state.pages.filter(
+          (page) => page.parentId === target.id && page.id !== pending.pageId
+        ).length
+        void state.movePage(pending.pageId, target.id, count)
+        return
+      }
+      const siblings = state.pages
+        .filter((page) => page.parentId === target.parentId && page.id !== pending.pageId)
+        .sort(byPagePosition)
+      const index = siblings.findIndex((page) => page.id === target.id)
+      if (index === -1) return
+      void state.movePage(
+        pending.pageId,
+        target.parentId,
+        active.zone === 'after' ? index + 1 : index
+      )
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (!pendingDragRef.current && !dragRef.current) return
+      event.preventDefault()
+      event.stopPropagation()
+      pendingDragRef.current = null
+      dragRef.current = null
+      endDrag()
+      setDrag(null)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('keydown', onKeyDown, true)
+      endDrag()
+    }
+  }, [])
+
+  const handleDragPointerDown = (pageId: string, event: ReactPointerEvent<HTMLButtonElement>): void => {
+    if (event.button !== 0) return
+    pendingDragRef.current = { pageId, x: event.clientX, y: event.clientY }
+  }
   const menuPage = menu ? (pages.find((page) => page.id === menu.pageId) ?? null) : null
   const iconPage = iconFor ? (pages.find((page) => page.id === iconFor.pageId) ?? null) : null
   const confirmPage = confirmId ? (pages.find((page) => page.id === confirmId) ?? null) : null
@@ -280,6 +474,9 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
               node={node}
               depth={0}
               renamingId={renamingId}
+              draggingId={drag?.pageId ?? null}
+              drop={drag?.overId ? { id: drag.overId, zone: drag.zone } : null}
+              suppressClickRef={suppressClickRef}
               onStartRename={(id) => setRenamingId(id)}
               onRenameCommit={(id, title) => {
                 renamePage(id, title)
@@ -290,6 +487,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
                 setMenu({ pageId, source, anchor: rectAnchor(source) })
                 setIconFor(null)
               }}
+              onDragPointerDown={handleDragPointerDown}
             />
           ))}
         </nav>

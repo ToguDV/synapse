@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import type { Page } from '../../../shared/types'
 import { useEditorStore } from '../editor/editorStore'
 import { t } from '../i18n'
-import { collectDescendantIds, nextPageAfterDelete, pageAncestors } from './pageTree'
+import {
+  collectDescendantIds,
+  movePage as movePageInTree,
+  nextPageAfterDelete,
+  pageAncestors
+} from './pageTree'
 
 interface PagesState {
   pages: Page[]
@@ -15,6 +20,7 @@ interface PagesState {
   deletePage: (id: string) => Promise<void>
   renamePage: (id: string, title: string) => void
   setPageIcon: (id: string, icon: string | null) => void
+  movePage: (id: string, parentId: string | null, position: number) => Promise<void>
   toggleExpanded: (id: string) => void
 }
 
@@ -151,6 +157,23 @@ export const usePagesStore = create<PagesState>((set, get) => ({
       pages: state.pages.map((page) => (page.id === id ? { ...page, icon } : page))
     }))
     fireAndForget(window.api.pages.setIcon(id, icon))
+  },
+
+  movePage: async (id, parentId, position) => {
+    const { pages, expandedIds } = get()
+    const next = movePageInTree(pages, id, parentId, position)
+    if (next === pages) return
+    set({
+      pages: next,
+      expandedIds:
+        parentId && !expandedIds.includes(parentId) ? [...expandedIds, parentId] : expandedIds
+    })
+    try {
+      await window.api.pages.move(id, { parentId, position })
+    } catch (error) {
+      console.error('Failed to move page', error)
+      if (get().pages === next) set({ pages })
+    }
   },
 
   toggleExpanded: (id) =>

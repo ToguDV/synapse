@@ -38,6 +38,7 @@ export function createPagesRepo(db: Database.Database) {
     `UPDATE pages SET title = @title, parent_id = @parentId, icon = @icon,
      position = @position, updated_at = @updatedAt WHERE id = @id`
   )
+  const updatePosition = db.prepare('UPDATE pages SET position = ? WHERE id = ?')
   const remove = db.prepare('DELETE FROM pages WHERE id = ?')
 
   const now = (): number => Date.now()
@@ -93,8 +94,57 @@ export function createPagesRepo(db: Database.Database) {
 
   const setIcon = (id: string, icon: string | null): Page => write({ ...getOrThrow(id), icon })
 
-  const move = (id: string, input: PageMoveInput): Page =>
-    write({ ...getOrThrow(id), parentId: input.parentId, position: input.position })
+  const orderedChildren = (parentId: string | null, excludeId?: string): PageRow[] =>
+    (selectAll.all() as PageRow[])
+      .filter((row) => row.parent_id === parentId && row.id !== excludeId)
+      .sort(
+        (a, b) =>
+          a.position - b.position ||
+          a.created_at - b.created_at ||
+          a.id.localeCompare(b.id)
+      )
+
+  const isDescendant = (candidateId: string, ancestorId: string): boolean => {
+    const seen = new Set<string>()
+    let current: string | null = candidateId
+    while (current) {
+      if (current === ancestorId) return true
+      if (seen.has(current)) return false
+      seen.add(current)
+      current = (selectById.get(current) as PageRow | undefined)?.parent_id ?? null
+    }
+    return false
+  }
+
+  // `position` es un índice de inserción entre los hermanos del padre destino
+  // (excluyendo la propia página): se recorta a [0, hermanos] y renumera ambos
+  // padres para que las posiciones queden consecutivas.
+  const move = (id: string, input: PageMoveInput): Page => {
+    const page = getOrThrow(id)
+    const parentId = input.parentId ?? null
+    if (parentId !== null && !get(parentId)) throw new Error(`Page not found: ${parentId}`)
+    if (parentId !== null && isDescendant(parentId, id)) {
+      throw new Error(`Cannot move page ${id} into its own subtree`)
+    }
+    const run = db.transaction((): Page => {
+      const oldParentId = page.parentId
+      const siblingIds = orderedChildren(parentId, id).map((row) => row.id)
+      const position = Math.max(0, Math.min(input.position, siblingIds.length))
+      siblingIds.splice(position, 0, id)
+      siblingIds.forEach((siblingId, index) => {
+        if (siblingId === id) return
+        const row = selectById.get(siblingId) as PageRow
+        if (index !== row.position) updatePosition.run(index, siblingId)
+      })
+      if (oldParentId !== parentId) {
+        orderedChildren(oldParentId, id).forEach((row, index) => {
+          if (index !== row.position) updatePosition.run(index, row.id)
+        })
+      }
+      return write({ ...page, parentId, position })
+    })
+    return run()
+  }
 
   const removePage = (id: string): void => {
     remove.run(id)

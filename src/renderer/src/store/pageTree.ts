@@ -88,6 +88,46 @@ export function collectDescendantIds(pages: Page[], id: string): string[] {
   return result
 }
 
+// `index` es un índice de inserción entre los hermanos del padre destino
+// (excluyendo la propia página), igual que la semántica del repositorio.
+export function movePage(
+  pages: Page[],
+  id: string,
+  parentId: string | null,
+  index: number
+): Page[] {
+  const target = pages.find((page) => page.id === id)
+  if (!target) return pages
+  if (parentId !== null) {
+    if (!pages.some((page) => page.id === parentId)) return pages
+    if (parentId === id || collectDescendantIds(pages, id).includes(parentId)) return pages
+  }
+  const siblingsOf = (pid: string | null): Page[] =>
+    pages.filter((page) => page.parentId === pid && page.id !== id).sort(byPosition)
+  const newSiblings = siblingsOf(parentId)
+  const clamped = Math.max(0, Math.min(index, newSiblings.length))
+  if (target.parentId === parentId) {
+    const currentOrder = pages
+      .filter((page) => page.parentId === parentId)
+      .sort(byPosition)
+    if (currentOrder.findIndex((page) => page.id === id) === clamped) return pages
+  }
+  const targetOrder = [...newSiblings]
+  targetOrder.splice(clamped, 0, target)
+  const positionById = new Map<string, number>()
+  targetOrder.forEach((page, position) => positionById.set(page.id, position))
+  if (target.parentId !== parentId) {
+    siblingsOf(target.parentId).forEach((page, position) => positionById.set(page.id, position))
+  }
+  const moved = { ...target, parentId, position: clamped }
+  return pages.map((page) => {
+    if (page.id === id) return moved
+    const nextPosition = positionById.get(page.id)
+    if (nextPosition === undefined || nextPosition === page.position) return page
+    return { ...page, position: nextPosition }
+  })
+}
+
 export function nextPageAfterDelete(pages: Page[], id: string): string | null {
   const target = pages.find((page) => page.id === id)
   if (!target) return flattenPages(pages)[0]?.id ?? null

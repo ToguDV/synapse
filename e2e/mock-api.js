@@ -103,15 +103,26 @@
       move: async (id, input) => {
         const p = pages.find((x) => x.id === id)
         if (!p) return null
+        const previousParent = p.parentId
         p.parentId = input.parentId
+        const byTree = (a, b) =>
+          a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
         const siblings = pages
           .filter((x) => x.parentId === p.parentId && x.id !== id)
-          .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
+          .sort(byTree)
         const index = Math.max(0, Math.min(input.position, siblings.length))
         siblings.splice(index, 0, p)
         siblings.forEach((x, i) => {
           x.position = i
         })
+        if (previousParent !== p.parentId) {
+          pages
+            .filter((x) => x.parentId === previousParent)
+            .sort(byTree)
+            .forEach((x, i) => {
+              x.position = i
+            })
+        }
         calls.push(['page-move', id, input.parentId, index])
         persist()
         return { ...p }

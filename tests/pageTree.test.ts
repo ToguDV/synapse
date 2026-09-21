@@ -4,6 +4,7 @@ import {
   buildPageTree,
   collectDescendantIds,
   flattenPages,
+  movePage,
   nextPageAfterDelete,
   pageAncestors
 } from '../src/renderer/src/store/pageTree'
@@ -110,6 +111,56 @@ describe('collectDescendantIds', () => {
 
     expect(collectDescendantIds(pages, 'root')).toEqual(['child', 'grandchild'])
     expect(collectDescendantIds(pages, 'other')).toEqual([])
+  })
+})
+
+describe('movePage', () => {
+  it('reordena entre hermanos y renumera las posiciones', () => {
+    const pages = [
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 }),
+      makePage({ id: 'c', position: 2 })
+    ]
+
+    const moved = movePage(pages, 'c', null, 0)
+
+    expect(flattenPages(moved).map((page) => page.id)).toEqual(['c', 'a', 'b'])
+    const byId = new Map(moved.map((page) => [page.id, page]))
+    expect(byId.get('c')?.position).toBe(0)
+    expect(byId.get('a')?.position).toBe(1)
+    expect(byId.get('b')?.position).toBe(2)
+    expect(pages.map((page) => page.position)).toEqual([0, 1, 2])
+  })
+
+  it('mueve a otro padre recortando el índice y renumerando ambos padres', () => {
+    const pages = [
+      makePage({ id: 'source' }),
+      makePage({ id: 'moving', parentId: 'source', position: 0 }),
+      makePage({ id: 'sibling', parentId: 'source', position: 1 }),
+      makePage({ id: 'target' }),
+      makePage({ id: 'first', parentId: 'target', position: 0 })
+    ]
+
+    const moved = movePage(pages, 'moving', 'target', 99)
+    const byId = new Map(moved.map((page) => [page.id, page]))
+
+    expect(byId.get('moving')).toMatchObject({ parentId: 'target', position: 1 })
+    expect(byId.get('first')?.position).toBe(0)
+    expect(byId.get('sibling')?.position).toBe(0)
+  })
+
+  it('devuelve la misma referencia para no-ops y movimientos inválidos', () => {
+    const pages = [
+      makePage({ id: 'root' }),
+      makePage({ id: 'child', parentId: 'root' }),
+      makePage({ id: 'grandchild', parentId: 'child' })
+    ]
+
+    expect(movePage(pages, 'child', 'root', 0)).toBe(pages)
+    expect(movePage(pages, 'zz', null, 0)).toBe(pages)
+    expect(movePage(pages, 'root', 'no-existe', 0)).toBe(pages)
+    expect(movePage(pages, 'root', 'root', 0)).toBe(pages)
+    expect(movePage(pages, 'root', 'grandchild', 0)).toBe(pages)
   })
 })
 
