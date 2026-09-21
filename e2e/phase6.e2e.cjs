@@ -46,6 +46,14 @@ const shot = (page, name) => page.screenshot({ path: path.join(OUT, name) })
 const settle = (page, ms = 200) => page.waitForTimeout(ms)
 const paletteCount = (page) => page.locator('[data-search-palette]').count()
 
+const paletteBox = (page) =>
+  page.evaluate(() => {
+    const dialog = document.querySelector('[data-search-palette] > [role="dialog"]')
+    if (!dialog) return null
+    const rect = dialog.getBoundingClientRect()
+    return { height: Math.round(rect.height), top: Math.round(rect.top) }
+  })
+
 const resultsDom = (page) =>
   page.evaluate(() =>
     [...document.querySelectorAll('[data-search-result]')].map((el) => ({
@@ -280,6 +288,42 @@ async function stage5Empty(page) {
     (await page.locator('[data-search-result]').count()) === 0 &&
       (await page.locator('[data-search-empty]').count()) === 0
   )
+
+  await page.evaluate(() => {
+    const original = window.api.search.query
+    window.__originalSearchQuery = original
+    window.api.search.query = async (term, limit) => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      return original(term, limit)
+    }
+  })
+  await page.locator('[data-search-input]').click()
+  await page.keyboard.type('z')
+  const sawSearching = await page
+    .waitForSelector('[data-search-searching]', { timeout: 1500 })
+    .then(() => true)
+    .catch(() => false)
+  const firstBox = await paletteBox(page)
+  await page.keyboard.type('zz')
+  const secondBox = await paletteBox(page)
+  await page.waitForSelector('[data-search-empty]')
+  const settledBox = await paletteBox(page)
+  check(
+    steps,
+    'mientras busca sin resultados muestra el indicador en lugar del vacío',
+    sawSearching && (await page.locator('[data-search-result]').count()) === 0
+  )
+  check(
+    steps,
+    'la paleta mantiene su altura y posición durante la búsqueda',
+    [firstBox, secondBox].every(
+      (box) => box && settledBox && box.height === settledBox.height && box.top === settledBox.top
+    ),
+    { firstBox, secondBox, settledBox }
+  )
+  await page.evaluate(() => {
+    window.api.search.query = window.__originalSearchQuery
+  })
 
   await page.fill('[data-search-input]', 'café')
   await waitResults(page, 1)

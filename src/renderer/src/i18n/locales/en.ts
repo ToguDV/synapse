@@ -50,6 +50,7 @@ export const en = {
     ariaLabel: 'Search',
     placeholder: 'Search pages and blocks…',
     empty: 'No results for “{{term}}”',
+    searching: 'Searching…',
     pagesGroup: 'Pages',
     blocksGroup: 'Blocks',
     pageKind: 'Page',

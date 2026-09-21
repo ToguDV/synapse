@@ -115,9 +115,13 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
           <Kbd>Esc</Kbd>
         </div>
         <ul ref={listRef} data-search-results className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          {term !== '' && !searching && results.length === 0 && (
-            <li data-search-empty className="px-4 py-8 text-center text-sm text-faint">
-              {t('search.empty', { term })}
+          {term !== '' && results.length === 0 && (
+            <li
+              data-search-searching={searching || undefined}
+              data-search-empty={searching ? undefined : true}
+              className="px-4 py-8 text-center text-sm text-faint"
+            >
+              {searching ? t('search.searching') : t('search.empty', { term })}
             </li>
           )}
           {results.map((result, index) => {
