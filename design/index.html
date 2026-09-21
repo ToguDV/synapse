@@ -913,51 +913,28 @@
           </div>
 
           <div class="panel">
-            <p class="panel__label">Todo shape — pick one</p>
+            <p class="panel__label">Todo checkbox</p>
             <p class="panel__hint">
-              Synapse ships square boxes today. Circles read lighter and match the pastel status
-              language. Same five states, same behavior; only the geometry changes.
+              16px square, 4px radius. Five states share one geometry; fill and color carry the
+              meaning. Behavior is unchanged from today.
             </p>
-            <div class="cbxs">
-              <div class="cbx-group">
-                <p class="cbx-group__label">Square · current</p>
-                <div class="cbx-item">
-                  <span class="cbx cbx--backlog"></span><span class="cbx-item__text">Backlog — dotted outline</span>
-                </div>
-                <div class="cbx-item">
-                  <span class="cbx cbx--todo"></span><span class="cbx-item__text">Todo — solid outline</span>
-                </div>
-                <div class="cbx-item">
-                  <span class="cbx cbx--progress"></span><span class="cbx-item__text">In progress — half filled</span>
-                </div>
-                <div class="cbx-item cbx-item--done">
-                  <span class="cbx cbx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
-                  <span class="cbx-item__text">Done — filled green</span>
-                </div>
-                <div class="cbx-item cbx-item--cancel">
-                  <span class="cbx cbx--cancel"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-x" /></svg></span>
-                  <span class="cbx-item__text">Cancelled — filled muted</span>
-                </div>
+            <div class="cbx-group" style="max-width: 440px">
+              <div class="cbx-item">
+                <span class="cbx cbx--backlog"></span><span class="cbx-item__text">Backlog — dotted outline</span>
               </div>
-              <div class="cbx-group">
-                <p class="cbx-group__label">Circle · proposed</p>
-                <div class="cbx-item">
-                  <span class="dotx dotx--backlog"></span><span class="cbx-item__text">Backlog — dotted outline</span>
-                </div>
-                <div class="cbx-item">
-                  <span class="dotx dotx--todo"></span><span class="cbx-item__text">Todo — solid outline</span>
-                </div>
-                <div class="cbx-item">
-                  <span class="dotx dotx--progress"></span><span class="cbx-item__text">In progress — half filled</span>
-                </div>
-                <div class="cbx-item cbx-item--done">
-                  <span class="dotx dotx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
-                  <span class="cbx-item__text">Done — filled green</span>
-                </div>
-                <div class="cbx-item cbx-item--cancel">
-                  <span class="dotx dotx--cancel"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-x" /></svg></span>
-                  <span class="cbx-item__text">Cancelled — filled muted</span>
-                </div>
+              <div class="cbx-item">
+                <span class="cbx cbx--todo"></span><span class="cbx-item__text">Todo — solid outline</span>
+              </div>
+              <div class="cbx-item">
+                <span class="cbx cbx--progress"></span><span class="cbx-item__text">In progress — half filled</span>
+              </div>
+              <div class="cbx-item cbx-item--done">
+                <span class="cbx cbx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
+                <span class="cbx-item__text">Done — filled green</span>
+              </div>
+              <div class="cbx-item cbx-item--cancel">
+                <span class="cbx cbx--cancel"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-x" /></svg></span>
+                <span class="cbx-item__text">Cancelled — filled muted</span>
               </div>
             </div>
           </div>
@@ -984,7 +961,7 @@
                   <span class="menu__body"><span class="menu__label">Bullet list</span><span class="menu__desc">Unordered list</span></span>
                 </div>
                 <div class="menu__item menu__item--active">
-                  <span class="menu__icon"><span class="dotx dotx--todo" style="width: 13px; height: 13px"></span></span>
+                  <span class="menu__icon"><span class="cbx cbx--todo" style="width: 13px; height: 13px"></span></span>
                   <span class="menu__body"><span class="menu__label">To-do list</span><span class="menu__desc">Track tasks with circles</span></span>
                 </div>
                 <div class="menu__item">

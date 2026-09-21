@@ -1021,26 +1021,11 @@ svg.i {
   font-weight: 600;
 }
 
-.cbxs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
 .cbx-group {
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
-}
-
-.cbx-group__label {
-  margin: 0 0 12px;
-  color: var(--faint);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .cbx-item {
@@ -1088,37 +1073,6 @@ svg.i {
 }
 
 .cbx--cancel {
-  border-color: var(--faintest);
-  background: var(--faintest);
-}
-
-.dotx {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  border: 1.5px solid var(--faint);
-  border-radius: 9999px;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-
-.dotx--backlog {
-  border-style: dotted;
-}
-
-.dotx--progress {
-  border-color: var(--warning);
-  background: linear-gradient(90deg, var(--warning) 50%, transparent 50%);
-}
-
-.dotx--done {
-  display: grid;
-  place-items: center;
-  border-color: var(--success);
-  background: var(--success);
-  color: var(--canvas);
-}
-
-.dotx--cancel {
   border-color: var(--faintest);
   background: var(--faintest);
 }
@@ -1914,8 +1868,7 @@ svg.i {
   .grid-3,
   .duo,
   .fontcards,
-  .rules,
-  .cbxs {
+  .rules {
     grid-template-columns: minmax(0, 1fr);
   }
 
