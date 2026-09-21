@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { SearchResult } from '../../../shared/types'
 import { getBlockDefinition } from '../editor/registry'
+import { useTranslation } from '../i18n'
 import { buildSnippet } from './searchResults'
 
 const DEBOUNCE_MS = 120
@@ -10,12 +11,13 @@ interface SearchPaletteProps {
   onClose: () => void
 }
 
-function resultLabel(result: SearchResult): string {
-  if (result.kind === 'page') return result.title || 'Sin título'
-  return result.pageTitle || 'Sin título'
+function resultLabel(result: SearchResult, untitled: string): string {
+  if (result.kind === 'page') return result.title || untitled
+  return result.pageTitle || untitled
 }
 
 export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
@@ -94,7 +96,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Buscar"
+        aria-label={t('search.ariaLabel')}
         onKeyDown={handleKeyDown}
         className="h-fit w-[36rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border-strong bg-surface shadow-2xl"
       >
@@ -103,13 +105,13 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar páginas y bloques…"
+          placeholder={t('search.placeholder')}
           className="w-full border-b border-border bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-faint"
         />
         <ul ref={listRef} data-search-results className="max-h-80 overflow-y-auto py-1">
           {term !== '' && !searching && results.length === 0 && (
             <li data-search-empty className="px-4 py-6 text-center text-sm text-faint">
-              Sin resultados para “{term}”
+              {t('search.empty', { term })}
             </li>
           )}
           {results.map((result, index) => {
@@ -122,12 +124,12 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
               <li key={`${result.kind}-${result.kind === 'page' ? result.pageId : result.blockId}`}>
                 {isFirstPage && (
                   <p data-search-group="pages" className="px-4 pb-1 pt-2 text-xs text-faint">
-                    Páginas
+                    {t('search.pagesGroup')}
                   </p>
                 )}
                 {isFirstBlock && (
                   <p data-search-group="blocks" className="px-4 pb-1 pt-2 text-xs text-faint">
-                    Bloques
+                    {t('search.blocksGroup')}
                   </p>
                 )}
                 <button
@@ -151,7 +153,9 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                       : getBlockDefinition(result.blockType).icon}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate">{resultLabel(result)}</span>
+                    <span className="block truncate">
+                      {resultLabel(result, t('common.untitled'))}
+                    </span>
                     {snippet && (
                       <span className="block truncate text-xs text-muted">
                         {snippet.ellipsisStart && '…'}
@@ -165,7 +169,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                     )}
                   </span>
                   <span className="shrink-0 text-xs text-faint">
-                    {result.kind === 'page' ? 'Página' : 'Bloque'}
+                    {result.kind === 'page' ? t('search.pageKind') : t('search.blockKind')}
                   </span>
                 </button>
               </li>
@@ -174,7 +178,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
         </ul>
         {active && (
           <p className="border-t border-border px-4 py-2 text-xs text-faint">
-            ↑↓ para moverte · Enter para abrir · Esc para cerrar
+            {t('search.help')}
           </p>
         )}
       </div>

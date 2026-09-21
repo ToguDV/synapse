@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useEditorStore } from '../editor/editorStore'
 import { BLOCK_MENU_ORDER, getBlockDefinition } from '../editor/registry'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { MenuItem } from './MenuItem'
 import { useAnchoredPosition } from './rectAnchor'
 
@@ -14,6 +15,7 @@ interface BlockMenuProps {
 }
 
 export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProps) {
+  const { t } = useTranslation()
   const [view, setView] = useState<'main' | 'convert'>('main')
   const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
   const blocks = useEditorStore((state) => state.blocks)
@@ -59,13 +61,13 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <MenuItem
             action="convert"
             icon="⇄"
-            label="Convertir en…"
+            label={t('blockMenu.convert')}
             onSelect={() => setView('convert')}
           />
           <MenuItem
             action="duplicate"
             icon="⧉"
-            label="Duplicar"
+            label={t('blockMenu.duplicate')}
             hint="Ctrl+D"
             onSelect={() => {
               duplicateBlocks([blockId])
@@ -75,7 +77,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <MenuItem
             action="move-up"
             icon="↑"
-            label="Mover arriba"
+            label={t('blockMenu.moveUp')}
             disabled={index === 0}
             onSelect={() => {
               moveBlockTo(blockId, index - 1, block.indent)
@@ -85,7 +87,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <MenuItem
             action="move-down"
             icon="↓"
-            label="Mover abajo"
+            label={t('blockMenu.moveDown')}
             disabled={index === blocks.length - 1}
             onSelect={() => {
               moveBlockTo(blockId, index + 1, block.indent)
@@ -96,8 +98,8 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <MenuItem
             action="delete"
             icon="⌫"
-            label="Eliminar"
-            hint="Supr"
+            label={t('blockMenu.delete')}
+            hint="Del"
             onSelect={() => {
               deleteBlocks([blockId])
               onClose()
@@ -106,7 +108,12 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         </>
       ) : (
         <>
-          <MenuItem action="back" icon="←" label="Convertir en…" onSelect={() => setView('main')} />
+          <MenuItem
+            action="back"
+            icon="←"
+            label={t('blockMenu.convert')}
+            onSelect={() => setView('main')}
+          />
           <div className="my-1 border-t border-border" />
           {BLOCK_MENU_ORDER.map((type) => {
             const definition = getBlockDefinition(type)
@@ -115,7 +122,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
                 key={type}
                 action={`convert-${type}`}
                 icon={definition.icon}
-                label={definition.label}
+                label={t(`blocks.${type}.label`)}
                 disabled={type === block.type}
                 onSelect={() => {
                   convertBlock(blockId, type)

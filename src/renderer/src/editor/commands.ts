@@ -1,4 +1,5 @@
 import type { BlockType } from '../../../shared/types'
+import { t, tList } from '../i18n'
 import { BLOCK_MENU_ORDER, getBlockDefinition } from './registry'
 
 interface InputRule {
@@ -36,21 +37,20 @@ export interface SlashCommand {
   keywords: string[]
 }
 
-export const SLASH_COMMANDS: SlashCommand[] = BLOCK_MENU_ORDER.map((type) => {
-  const definition = getBlockDefinition(type)
-  return {
-    type,
-    label: definition.label,
-    description: definition.description,
-    icon: definition.icon,
-    keywords: [type, ...definition.keywords]
-  }
-})
+export function buildSlashCommands(): SlashCommand[] {
+  return BLOCK_MENU_ORDER.map((type) => {
+    const definition = getBlockDefinition(type)
+    return {
+      type,
+      label: t(`blocks.${type}.label`),
+      description: t(`blocks.${type}.description`),
+      icon: definition.icon,
+      keywords: [type, ...tList(`blocks.${type}.keywords`)]
+    }
+  })
+}
 
-export function filterSlashCommands(
-  query: string,
-  commands: SlashCommand[] = SLASH_COMMANDS
-): SlashCommand[] {
+export function filterSlashCommands(query: string, commands: SlashCommand[]): SlashCommand[] {
   const normalized = query.trim().toLowerCase()
   if (normalized === '') return commands
   return commands.filter((command) =>

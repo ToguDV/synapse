@@ -6,13 +6,14 @@ import {
   type ResolvedTheme,
   type ThemePreference
 } from '../../../shared/theme'
+import type { MessageKey } from '../i18n'
 
 export const THEME_CYCLE: ThemePreference[] = ['light', 'dark', 'system']
 
-export const THEME_LABELS: Record<ThemePreference, { icon: string; label: string }> = {
-  light: { icon: '☀', label: 'Claro' },
-  dark: { icon: '🌙', label: 'Oscuro' },
-  system: { icon: '🖥', label: 'Sistema' }
+export const THEME_META: Record<ThemePreference, { icon: string; labelKey: MessageKey }> = {
+  light: { icon: '☀', labelKey: 'theme.light' },
+  dark: { icon: '🌙', labelKey: 'theme.dark' },
+  system: { icon: '🖥', labelKey: 'theme.system' }
 }
 
 interface ThemeState {

@@ -173,7 +173,7 @@ async function stage2Grouped(page) {
   check(
     steps,
     'la fila muestra el título de la página contenedora',
-    results[0]?.text.includes('Recetas') && results[0]?.text.includes('Bloque'),
+    results[0]?.text.includes('Recetas') && results[0]?.text.includes('Block'),
     results[0]?.text
   )
   check(

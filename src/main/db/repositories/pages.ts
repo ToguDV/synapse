@@ -51,7 +51,7 @@ export function createPagesRepo(db: Database.Database) {
 
   const getOrThrow = (id: string): Page => {
     const page = get(id)
-    if (!page) throw new Error(`Página no encontrada: ${id}`)
+    if (!page) throw new Error(`Page not found: ${id}`)
     return page
   }
 

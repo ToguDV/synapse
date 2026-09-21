@@ -449,13 +449,13 @@ async function stageA(page) {
   await seed(page, [makeBlock(0, 'code', '')])
   await clickEditable(page, 0)
   await openSlash(page)
-  await page.keyboard.type('cita')
+  await page.keyboard.type('quote')
   await closeMenu(page)
   rows = await dom(page)
   check(
     steps,
-    'A5c Escape del slash menu dentro de code reinserta "/cita"',
-    rows[0].type === 'code' && rows[0].text === '/cita',
+    'A5c Escape del slash menu dentro de code reinserta "/quote"',
+    rows[0].type === 'code' && rows[0].text === '/quote',
     rows[0]
   )
 
@@ -548,14 +548,14 @@ async function stageB(page) {
   await seed(page, [makeBlock(0, 'paragraph', 'hola')])
   await clickEditable(page, 0, 'end')
   await openSlash(page)
-  await page.keyboard.type('cita')
+  await page.keyboard.type('quote')
   await closeMenu(page)
   let rows = await dom(page)
   let menuCount = await page.locator('[data-slash-menu]').count()
   check(
     steps,
-    'B1 Escape con query reinserta "/cita" y cierra el menú',
-    rows[0].text === 'hola/cita' && menuCount === 0,
+    'B1 Escape con query reinserta "/quote" y cierra el menú',
+    rows[0].text === 'hola/quote' && menuCount === 0,
     { rows: rows[0], menuCount }
   )
   const caret = await caretOffset(page)
@@ -569,8 +569,8 @@ async function stageB(page) {
   const noResults = await page.locator('[data-slash-menu]').innerText()
   check(
     steps,
-    'B2a query sin resultados muestra "Sin resultados"',
-    noResults.includes('Sin resultados'),
+    'B2a query sin resultados muestra "No results"',
+    noResults.includes('No results'),
     noResults
   )
   await page.keyboard.press('Enter')
@@ -607,7 +607,7 @@ async function stageB(page) {
   await seed(page, [makeBlock(0, 'paragraph', 'abc')])
   await clickEditable(page, 0, 'end')
   await openSlash(page)
-  await page.keyboard.type('divisor')
+  await page.keyboard.type('divider')
   const rootBox = await page.locator('[data-row-id]').first().boundingBox()
   await page.mouse.click(rootBox.x - 140, rootBox.y + 300)
   await settle(page, 200)
@@ -615,8 +615,8 @@ async function stageB(page) {
   menuCount = await page.locator('[data-slash-menu]').count()
   check(
     steps,
-    'B4 click fuera cierra el menú y reinserta "/divisor"',
-    rows[0].text === 'abc/divisor' && menuCount === 0,
+    'B4 click fuera cierra el menú y reinserta "/divider"',
+    rows[0].text === 'abc/divider' && menuCount === 0,
     { rows: rows[0], menuCount }
   )
 
@@ -624,14 +624,14 @@ async function stageB(page) {
   await seed(page, [makeBlock(0, 'paragraph', 'texto')])
   await clickEditable(page, 0, 'end')
   await openSlash(page)
-  await page.keyboard.type('divisor')
+  await page.keyboard.type('divider')
   await page.keyboard.press('Enter')
   await settle(page)
   rows = await dom(page)
   const focus = await focusedBlock(page)
   check(
     steps,
-    'B5a "/divisor" con texto inserta divider debajo y párrafo enfocado',
+    'B5a "/divider" con texto inserta divider debajo y párrafo enfocado',
     rows.length === 3 &&
       rows[0].type === 'paragraph' &&
       rows[0].text === 'texto' &&
@@ -1528,14 +1528,14 @@ async function stageH(page) {
   await placeCaret(page, 0, 3)
   await settle(page, 60)
   await openSlash(page)
-  await page.keyboard.type('cita')
+  await page.keyboard.type('quote')
   await closeMenu(page)
   rows = await dom(page)
   off = await caretOffset(page)
   check(
     steps,
-    'H7a Escape del slash en bloque multilínea reinserta en el caret ("a\\nb/cita")',
-    rows[0].text === 'a\nb/cita' && off === 8,
+    'H7a Escape del slash en bloque multilínea reinserta en el caret ("a\\nb/quote")',
+    rows[0].text === 'a\nb/quote' && off === 9,
     { text: rows[0].text, off }
   )
 
@@ -1543,14 +1543,14 @@ async function stageH(page) {
   await placeCaret(page, 0, 3)
   await settle(page, 60)
   await openSlash(page)
-  await page.keyboard.type('divisor')
+  await page.keyboard.type('divider')
   await page.keyboard.press('Enter')
   await settle(page, 200)
   rows = await dom(page)
   focus = await focusedBlock(page)
   check(
     steps,
-    'H7b "/divisor" con code multilínea conserva el texto e inserta divider + párrafo',
+    'H7b "/divider" con code multilínea conserva el texto e inserta divider + párrafo',
     rows.length === 3 &&
       rows[0].type === 'code' &&
       rows[0].text === 'a\nb' &&

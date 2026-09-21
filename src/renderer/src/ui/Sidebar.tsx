@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { usePagesStore } from '../store/pagesStore'
-import { THEME_LABELS, useThemeStore } from '../store/themeStore'
+import { THEME_META, useThemeStore } from '../store/themeStore'
 import { buildPageTree, collectDescendantIds, type PageNode } from '../store/pageTree'
 import { ConfirmDialog } from './ConfirmDialog'
 import { IconPicker } from './IconPicker'
@@ -67,6 +68,7 @@ function PageTreeItem({
   onRenameCancel,
   onOpenMenu
 }: PageTreeItemProps) {
+  const { t } = useTranslation()
   const { page, children } = node
   const activePageId = usePagesStore((state) => state.activePageId)
   const expandedIds = usePagesStore((state) => state.expandedIds)
@@ -101,7 +103,7 @@ function PageTreeItem({
             type="button"
             data-page-toggle
             data-expanded={expanded}
-            aria-label={expanded ? 'Contraer' : 'Expandir'}
+            aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
             onClick={() => toggleExpanded(page.id)}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs text-faint transition hover:bg-hover hover:text-ink-soft"
           >
@@ -129,13 +131,13 @@ function PageTreeItem({
                 {page.icon}
               </span>
             )}
-            <span className="truncate">{page.title || 'Sin título'}</span>
+            <span className="truncate">{page.title || t('common.untitled')}</span>
           </button>
         )}
         <button
           type="button"
           data-page-action="add-child"
-          title="Añadir subpágina"
+          title={t('sidebar.addSubpage')}
           onClick={() => void createPage(page.id)}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
@@ -144,7 +146,7 @@ function PageTreeItem({
         <button
           type="button"
           data-page-action="open-menu"
-          title="Opciones de página"
+          title={t('sidebar.pageOptions')}
           onClick={openMenu}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
@@ -172,6 +174,7 @@ function PageTreeItem({
 }
 
 export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
+  const { t } = useTranslation()
   const pages = usePagesStore((state) => state.pages)
   const createPage = usePagesStore((state) => state.createPage)
   const deletePage = usePagesStore((state) => state.deletePage)
@@ -179,7 +182,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
   const themePreference = useThemeStore((state) => state.preference)
   const cycleTheme = useThemeStore((state) => state.cyclePreference)
-  const theme = THEME_LABELS[themePreference]
+  const theme = THEME_META[themePreference]
+  const themeLabel = t(theme.labelKey)
   const [menu, setMenu] = useState<
     { pageId: string; source: HTMLButtonElement; anchor: RectAnchor } | null
   >(null)
@@ -202,7 +206,7 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           type="button"
           data-page-action="new-root"
           onClick={() => void createPage(null)}
-          title="Nueva página"
+          title={t('sidebar.newPage')}
           className="rounded-md px-2 text-lg leading-6 text-muted transition hover:bg-hover hover:text-ink"
         >
           +
@@ -212,11 +216,11 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
         type="button"
         data-search-trigger
         onClick={onOpenSearch}
-        title="Buscar (Ctrl+K)"
+        title={t('sidebar.searchTooltip')}
         className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
       >
         <span aria-hidden>🔍</span>
-        <span className="flex-1 text-left">Buscar</span>
+        <span className="flex-1 text-left">{t('sidebar.search')}</span>
         <span className="text-xs text-faintest">Ctrl K</span>
       </button>
       <nav className="flex-1 overflow-y-auto px-2 pb-3">
@@ -267,13 +271,13 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
       )}
       {confirmPage && (
         <ConfirmDialog
-          title={`¿Eliminar “${confirmPage.title || 'Sin título'}”?`}
+          title={t('sidebar.deleteConfirmTitle', {
+            title: confirmPage.title || t('common.untitled')
+          })}
           message={
             descendants > 0
-              ? `Se eliminarán también ${descendants} ${
-                  descendants === 1 ? 'subpágina' : 'subpáginas'
-                } y todo su contenido. Esta acción no se puede deshacer.`
-              : 'Se eliminará la página y todo su contenido. Esta acción no se puede deshacer.'
+              ? t('sidebar.deleteWithChildren', { count: descendants })
+              : t('sidebar.deleteWithoutChildren')
           }
           onConfirm={() => {
             void deletePage(confirmPage.id)
@@ -287,11 +291,11 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
         data-theme-toggle
         data-theme-preference={themePreference}
         onClick={cycleTheme}
-        title={`Tema: ${theme.label}. Clic para cambiar`}
+        title={t('theme.tooltip', { theme: themeLabel })}
         className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
       >
         <span aria-hidden>{theme.icon}</span>
-        <span className="flex-1 text-left">Tema: {theme.label}</span>
+        <span className="flex-1 text-left">{t('theme.current', { theme: themeLabel })}</span>
       </button>
     </aside>
   )

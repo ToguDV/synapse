@@ -424,7 +424,7 @@ async function stage5Delete(page) {
   check(
     steps,
     'el modal avisa de las subpáginas incluidas',
-    (await page.textContent('[data-confirm-dialog]')).includes('1 subpágina'),
+    (await page.textContent('[data-confirm-dialog]')).includes('1 subpage'),
     await page.textContent('[data-confirm-dialog]')
   )
 

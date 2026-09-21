@@ -116,7 +116,7 @@ describe('pagesStore', () => {
 
     await usePagesStore.getState().initialize()
 
-    expect(api.pages.create).toHaveBeenCalledWith({ title: 'Página sin título' })
+    expect(api.pages.create).toHaveBeenCalledWith({ title: 'Untitled' })
     const state = usePagesStore.getState()
     expect(state.pages).toHaveLength(1)
     expect(state.activePageId).toBe(state.pages[0].id)

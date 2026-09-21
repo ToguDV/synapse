@@ -15,33 +15,33 @@ import { applyThemePreference } from '../theme'
 import { THEME_PREFERENCE_KEY } from '../../shared/theme'
 
 function requireString(value: unknown, name: string): string {
-  if (typeof value !== 'string') throw new Error(`${name} debe ser un string`)
+  if (typeof value !== 'string') throw new Error(`${name} must be a string`)
   return value
 }
 
 function requireId(value: unknown, name = 'id'): string {
   const id = requireString(value, name)
-  if (id.length === 0) throw new Error(`${name} no puede estar vacío`)
+  if (id.length === 0) throw new Error(`${name} cannot be empty`)
   return id
 }
 
 function requireNumber(value: unknown, name: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new Error(`${name} debe ser un número`)
+    throw new Error(`${name} must be a number`)
   }
   return value
 }
 
 function requireBlockType(value: unknown): BlockType {
   if (typeof value !== 'string' || !BLOCK_TYPES.includes(value as BlockType)) {
-    throw new Error(`Tipo de bloque inválido: ${String(value)}`)
+    throw new Error(`Invalid block type: ${String(value)}`)
   }
   return value as BlockType
 }
 
 function parsePageCreateInput(value: unknown): PageCreateInput {
   if (value === undefined || value === null) return {}
-  if (typeof value !== 'object') throw new Error('input de página inválido')
+  if (typeof value !== 'object') throw new Error('Invalid page input')
   const input = value as Record<string, unknown>
   const parsed: PageCreateInput = {}
   if (input.title !== undefined) parsed.title = requireString(input.title, 'title')
@@ -52,7 +52,7 @@ function parsePageCreateInput(value: unknown): PageCreateInput {
 }
 
 function parseBlockCreateInput(value: unknown): BlockCreateInput {
-  if (typeof value !== 'object' || value === null) throw new Error('input de bloque inválido')
+  if (typeof value !== 'object' || value === null) throw new Error('Invalid block input')
   const input = value as Record<string, unknown>
   const parsed: BlockCreateInput = { pageId: requireId(input.pageId, 'pageId') }
   if (input.id !== undefined) parsed.id = requireId(input.id)
@@ -64,7 +64,7 @@ function parseBlockCreateInput(value: unknown): BlockCreateInput {
 }
 
 function parseBlockPatch(value: unknown): BlockUpdatePatch {
-  if (typeof value !== 'object' || value === null) throw new Error('patch de bloque inválido')
+  if (typeof value !== 'object' || value === null) throw new Error('Invalid block patch')
   const patch = value as Record<string, unknown>
   const parsed: BlockUpdatePatch = {}
   if (patch.type !== undefined) parsed.type = requireBlockType(patch.type)
@@ -107,7 +107,7 @@ export function registerIpc(db: Database.Database): void {
   })
   ipcMain.handle('blocks:reorder', (_event, payload: unknown) => {
     const { pageId, orderedIds } = payload as Record<string, unknown>
-    if (!Array.isArray(orderedIds)) throw new Error('orderedIds debe ser un array')
+    if (!Array.isArray(orderedIds)) throw new Error('orderedIds must be an array')
     return blocks.reorder(
       requireId(pageId, 'pageId'),
       orderedIds.map((id) => requireId(id, 'orderedIds[]'))

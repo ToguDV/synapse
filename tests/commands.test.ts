@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildSlashCommands,
   filterSlashCommands,
-  matchInputRule,
-  SLASH_COMMANDS
+  matchInputRule
 } from '../src/renderer/src/editor/commands'
 import { parseBlockContent, parseContent, serializeContent } from '../src/renderer/src/editor/content'
 
@@ -47,24 +47,30 @@ describe('matchInputRule', () => {
 
 describe('filterSlashCommands', () => {
   it('sin query devuelve todos los comandos', () => {
-    expect(filterSlashCommands('')).toHaveLength(SLASH_COMMANDS.length)
-    expect(filterSlashCommands('   ')).toHaveLength(SLASH_COMMANDS.length)
+    const commands = buildSlashCommands()
+    expect(filterSlashCommands('', commands)).toHaveLength(commands.length)
+    expect(filterSlashCommands('   ', commands)).toHaveLength(commands.length)
   })
 
   it('filtra por etiqueta, tipo y palabras clave', () => {
-    expect(filterSlashCommands('cita').map((command) => command.type)).toEqual(['quote'])
-    expect(filterSlashCommands('tarea').map((command) => command.type)).toEqual(['todo'])
-    expect(filterSlashCommands('h1').map((command) => command.type)).toEqual(['heading'])
-    expect(filterSlashCommands('bullet').map((command) => command.type)).toEqual(['bullet'])
-    expect(filterSlashCommands('divisor').map((command) => command.type)).toEqual(['divider'])
+    const commands = buildSlashCommands()
+    expect(filterSlashCommands('quote', commands).map((command) => command.type)).toEqual(['quote'])
+    expect(filterSlashCommands('task', commands).map((command) => command.type)).toEqual(['todo'])
+    expect(filterSlashCommands('h1', commands).map((command) => command.type)).toEqual(['heading'])
+    expect(filterSlashCommands('bullet', commands).map((command) => command.type)).toEqual(['bullet'])
+    expect(filterSlashCommands('divider', commands).map((command) => command.type)).toEqual([
+      'divider'
+    ])
   })
 
   it('ignora mayúsculas y espacios', () => {
-    expect(filterSlashCommands('  TITULO ').map((command) => command.type)).toEqual(['heading'])
+    expect(
+      filterSlashCommands('  HEADING ', buildSlashCommands()).map((command) => command.type)
+    ).toEqual(['heading'])
   })
 
   it('devuelve vacío si nada coincide', () => {
-    expect(filterSlashCommands('zzzz')).toEqual([])
+    expect(filterSlashCommands('zzzz', buildSlashCommands())).toEqual([])
   })
 })
 

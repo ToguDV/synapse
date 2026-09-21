@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { MenuItem } from './MenuItem'
 import { useAnchoredPosition } from './rectAnchor'
 
@@ -25,6 +26,7 @@ export function PageMenu({
   onDelete,
   onClose
 }: PageMenuProps) {
+  const { t } = useTranslation()
   const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function PageMenu({
       <MenuItem
         action="rename"
         icon="✏️"
-        label="Renombrar"
+        label={t('pageMenu.rename')}
         onSelect={() => {
           onRename()
           onClose()
@@ -67,7 +69,7 @@ export function PageMenu({
       <MenuItem
         action="add-child"
         icon="↳"
-        label="Añadir subpágina"
+        label={t('pageMenu.addSubpage')}
         onSelect={() => {
           onAddChild()
           onClose()
@@ -76,7 +78,7 @@ export function PageMenu({
       <MenuItem
         action="icon"
         icon="😀"
-        label="Cambiar icono"
+        label={t('pageMenu.changeIcon')}
         onSelect={() => {
           onIcon()
           onClose()
@@ -86,7 +88,7 @@ export function PageMenu({
       <MenuItem
         action="delete"
         icon="⌫"
-        label="Eliminar"
+        label={t('pageMenu.delete')}
         onSelect={() => {
           onDelete()
           onClose()

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BlockType } from '../../../shared/types'
-import { filterSlashCommands } from '../editor/commands'
+import { filterSlashCommands, buildSlashCommands } from '../editor/commands'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { useAnchoredPosition } from './rectAnchor'
 
 interface SlashMenuProps {
@@ -13,12 +14,13 @@ interface SlashMenuProps {
 }
 
 export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuProps) {
+  const { t, locale } = useTranslation()
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const { ref: listRef, style } = useAnchoredPosition(anchor, { getAnchor })
   const queryRef = useRef(query)
   const activeRef = useRef(activeIndex)
-  const commands = useMemo(() => filterSlashCommands(query), [query])
+  const commands = useMemo(() => filterSlashCommands(query, buildSlashCommands()), [query, locale])
 
   useEffect(() => {
     queryRef.current = query
@@ -91,7 +93,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
       className="fixed z-50 w-72 overflow-y-auto rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
     >
       {commands.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-faint">Sin resultados</p>
+        <p className="px-3 py-2 text-sm text-faint">{t('common.noResults')}</p>
       ) : (
         commands.map((command, index) => (
           <button

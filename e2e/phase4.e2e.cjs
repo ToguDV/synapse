@@ -221,16 +221,16 @@ async function stage2Slash(page) {
   check(steps, 'el slash menu lista los 7 tipos', items.length === 7, items)
   await shot(page, 'e2e-p4-02-slash.png')
 
-  await page.keyboard.type('cita')
+  await page.keyboard.type('quote')
   items = await page.evaluate(() =>
     [...document.querySelectorAll('[data-slash-item]')].map((el) => el.getAttribute('data-slash-item'))
   )
-  check(steps, 'el filtro "cita" deja solo quote', items.length === 1 && items[0] === 'quote', items)
+  check(steps, 'el filtro "quote" deja solo quote', items.length === 1 && items[0] === 'quote', items)
 
   await page.keyboard.press('Enter')
   await settle(page)
   let rows = await dom(page)
-  check(steps, 'Enter convierte el bloque vacío en cita', rows.length === 1 && rows[0].type === 'quote', rows)
+  check(steps, 'Enter convierte el bloque vacío en quote', rows.length === 1 && rows[0].type === 'quote', rows)
 
   await page.keyboard.press('ArrowUp')
   await page.keyboard.press('Escape')
@@ -239,13 +239,13 @@ async function stage2Slash(page) {
   check(steps, 'Escape cierra el slash menu sin escribir', rows[0].text === '', rows[0])
 
   await openSlash(page)
-  await page.keyboard.type('divisor')
+  await page.keyboard.type('divider')
   await page.keyboard.press('Enter')
   await settle(page)
   rows = await dom(page)
   check(
     steps,
-    '"divisor" convierte en divider y añade párrafo',
+    '"divider" convierte en divider y añade párrafo',
     rows.length === 2 && rows[0].type === 'divider' && rows[1].type === 'paragraph',
     rows
   )

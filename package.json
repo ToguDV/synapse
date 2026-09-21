@@ -1,7 +1,7 @@
 {
   "name": "synapse",
   "version": "0.1.0",
-  "description": "Editor de bloques estilo Notion",
+  "description": "Notion-style block editor",
   "homepage": "https://synapse.togudv.com",
   "license": "UNLICENSED",
   "desktopName": "synapse.desktop",

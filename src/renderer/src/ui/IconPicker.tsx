@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { PAGE_EMOJIS } from './emojis'
 import { useAnchoredPosition } from './rectAnchor'
 
@@ -15,6 +16,7 @@ interface IconPickerProps {
 const PICKER_WIDTH = 296
 
 export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: IconPickerProps) {
+  const { t } = useTranslation()
   const { ref, style } = useAnchoredPosition(anchor, { getAnchor })
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
           onClick={() => onSelect(null)}
           className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-hover hover:text-ink"
         >
-          <span className="text-faint">✕</span> Quitar icono
+          <span className="text-faint">✕</span> {t('iconPicker.remove')}
         </button>
       )}
       <div className="grid grid-cols-8 gap-1 p-2">

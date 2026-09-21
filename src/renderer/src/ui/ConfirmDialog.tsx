@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useTranslation } from '../i18n'
 
 interface ConfirmDialogProps {
   title: string
@@ -11,10 +12,11 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Eliminar',
+  confirmLabel,
   onConfirm,
   onCancel
 }: ConfirmDialogProps) {
+  const { t } = useTranslation()
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="rounded-md px-3 py-1.5 text-sm text-ink-soft transition hover:bg-hover hover:text-ink"
           >
-            Cancelar
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -60,7 +62,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-500"
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.delete')}
           </button>
         </div>
       </div>

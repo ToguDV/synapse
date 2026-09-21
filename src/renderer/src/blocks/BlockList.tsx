@@ -10,6 +10,7 @@ import { insertPlainText, getCaretAnchor, readPlainText, setCaretOffset } from '
 import { useEditorStore } from '../editor/editorStore'
 import { maxIndentFor } from '../editor/transforms'
 import type { RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { BlockMenu } from '../ui/BlockMenu'
 import { rectAnchor, rectAnchorIfConnected } from '../ui/rectAnchor'
 import { SlashMenu } from '../ui/SlashMenu'
@@ -109,6 +110,7 @@ function handleShortcuts(event: ShortcutLike): void {
 }
 
 export function BlockList({ pageId }: { pageId: string }) {
+  const { t } = useTranslation()
   const blocks = useEditorStore((state) => state.blocks)
   const loading = useEditorStore((state) => state.loading)
   const loadPage = useEditorStore((state) => state.loadPage)
@@ -263,7 +265,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   return (
     <div ref={rootRef} className="mt-4 flex flex-col pb-24" onKeyDown={handleShortcuts}>
       {loading ? (
-        <p className="text-sm text-faintest">Cargando bloques…</p>
+        <p className="text-sm text-faintest">{t('blocks.loading')}</p>
       ) : (
         blocks.map((block, index) => (
           <Fragment key={block.id}>

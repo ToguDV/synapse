@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Page } from '../../../shared/types'
 import { useEditorStore } from '../editor/editorStore'
+import { t } from '../i18n'
 import { collectDescendantIds, nextPageAfterDelete, pageAncestors } from './pageTree'
 
 interface PagesState {
@@ -18,7 +19,6 @@ interface PagesState {
 }
 
 const AUTOSAVE_DELAY_MS = 500
-const DEFAULT_TITLE = 'Página sin título'
 
 let initPromise: Promise<void> | null = null
 const renameTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -52,7 +52,7 @@ export const usePagesStore = create<PagesState>((set, get) => ({
     initPromise ??= (async () => {
       const pages = await window.api.pages.list()
       if (pages.length === 0) {
-        const page = await window.api.pages.create({ title: DEFAULT_TITLE })
+        const page = await window.api.pages.create({ title: t('common.untitledPage') })
         set({ pages: [page], activePageId: page.id, expandedIds: [], ready: true })
         return
       }
@@ -76,9 +76,9 @@ export const usePagesStore = create<PagesState>((set, get) => ({
   createPage: async (parentId = null) => {
     let page: Page
     try {
-      page = await window.api.pages.create({ title: DEFAULT_TITLE, parentId })
+      page = await window.api.pages.create({ title: t('common.untitledPage'), parentId })
     } catch (error) {
-      console.error('No se pudo crear la página', error)
+      console.error('Failed to create page', error)
       return
     }
     set((state) => ({
@@ -102,7 +102,7 @@ export const usePagesStore = create<PagesState>((set, get) => ({
       await window.api.pages.remove(id)
     } catch (error) {
       for (const restoreLoad of restoreLoads) restoreLoad()
-      console.error('No se pudo eliminar la página', error)
+      console.error('Failed to delete page', error)
       const activeId = get().activePageId
       const editorNow = useEditorStore.getState()
       if (activeId !== null && editorNow.pageId !== activeId) {

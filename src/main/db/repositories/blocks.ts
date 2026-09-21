@@ -52,7 +52,7 @@ export function createBlocksRepo(db: Database.Database) {
 
   const getOrThrow = (id: string): Block => {
     const block = get(id)
-    if (!block) throw new Error(`Bloque no encontrado: ${id}`)
+    if (!block) throw new Error(`Block not found: ${id}`)
     return block
   }
 

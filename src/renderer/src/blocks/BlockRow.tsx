@@ -8,6 +8,7 @@ import { getCaretAnchor, getCaretOffset, insertPlainText, readPlainText } from '
 import { useEditorStore } from '../editor/editorStore'
 import { getBlockDefinition } from '../editor/registry'
 import type { EditorBlock, RectAnchor } from '../editor/types'
+import { useTranslation } from '../i18n'
 import { BlockHandle } from './BlockHandle'
 import { EditableText } from './EditableText'
 
@@ -45,6 +46,7 @@ export function BlockRow({
   const selectedCount = useEditorStore((state) => state.selectedIds.length)
 
   const definition = getBlockDefinition(block.type)
+  const { t } = useTranslation()
   const checked = block.checked ?? false
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
@@ -160,7 +162,7 @@ export function BlockRow({
         type="button"
         role="checkbox"
         aria-checked={checked}
-        aria-label="Marcar tarea"
+        aria-label={t('blocks.todo.checkboxLabel')}
         data-todo-checkbox
         onMouseDown={(event) => {
           event.preventDefault()
@@ -184,7 +186,7 @@ export function BlockRow({
         <span
           className={`pointer-events-none absolute select-none text-faintest ${definition.textClasses}`}
         >
-          {definition.placeholder}
+          {t(`blocks.${block.type}.placeholder`)}
         </span>
       )}
       <EditableText

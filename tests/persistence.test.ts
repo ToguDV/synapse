@@ -68,7 +68,7 @@ describe('pages repo', () => {
     const pages = createPagesRepo(db)
 
     expect(pages.get('no-existe')).toBeNull()
-    expect(() => pages.rename('no-existe', 'X')).toThrow(/no encontrada/i)
+    expect(() => pages.rename('no-existe', 'X')).toThrow(/not found/i)
     expect(() => pages.move('no-existe', { parentId: null, position: 0 })).toThrow()
   })
 
@@ -164,7 +164,7 @@ describe('blocks repo', () => {
 
     expect(updated).toMatchObject({ type: 'todo', content: '{"text":"comprar pan"}', indent: 1 })
     expect(blocks.update(block.id, {})).toEqual(updated)
-    expect(() => blocks.update('no-existe', { indent: 1 })).toThrow(/no encontrado/i)
+    expect(() => blocks.update('no-existe', { indent: 1 })).toThrow(/not found/i)
   })
 
   it('reordena asignando posiciones consecutivas desde 0', () => {

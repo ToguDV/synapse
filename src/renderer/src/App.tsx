@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { SearchResult } from '../../shared/types'
 import type { RectAnchor } from './editor/types'
 import { useEditorStore } from './editor/editorStore'
+import { useTranslation } from './i18n'
 import { usePagesStore } from './store/pagesStore'
 import { useThemeStore } from './store/themeStore'
 import { Sidebar } from './ui/Sidebar'
@@ -31,6 +32,7 @@ function titleMeasurer(el: HTMLElement, text: string): (size: number) => number 
 }
 
 function App() {
+  const { t } = useTranslation()
   const ready = usePagesStore((state) => state.ready)
   const initialize = usePagesStore((state) => state.initialize)
   const initializeTheme = useThemeStore((state) => state.initialize)
@@ -112,7 +114,7 @@ function App() {
       <Sidebar onOpenSearch={() => setSearchOpen(true)} />
       <main className="flex flex-1 flex-col overflow-y-auto">
         {!ready || !activePage ? (
-          <p className="mt-24 self-center text-sm text-faint">Cargando…</p>
+          <p className="mt-24 self-center text-sm text-faint">{t('common.loading')}</p>
         ) : (
           <div className="w-full max-w-2xl self-center px-8 py-16">
             <Breadcrumbs pageId={activePage.id} />
@@ -121,7 +123,7 @@ function App() {
                 ref={iconButtonRef}
                 type="button"
                 data-icon-button
-                title={activePage.icon ? 'Cambiar icono' : 'Añadir icono'}
+                title={activePage.icon ? t('app.changeIcon') : t('app.addIcon')}
                 onClick={(event) => setIconAnchor(rectAnchor(event.currentTarget))}
                 style={{
                   marginTop: titleIconOffset(titleSize, iconButtonRef.current?.offsetHeight ?? 48)
@@ -137,7 +139,7 @@ function App() {
                 data-page-title-input
                 rows={1}
                 value={activePage.title}
-                placeholder="Sin título"
+                placeholder={t('common.untitled')}
                 onChange={(event) => {
                   const raw = event.target.value
                   const clean = raw.replace(/[\r\n]+/g, ' ')
