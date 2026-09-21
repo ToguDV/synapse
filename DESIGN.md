@@ -12,6 +12,11 @@ Every token and component below has a living example in `design/` (`index.html` 
 Open `design/index.html` in a browser and use the Mocha/Latte toggle in the top bar; both flavors
 share one token set and one markup, so anything that only works in one theme is a bug.
 
+Mocha Synapse is platform-agnostic by design: the UI consumes semantic tokens and speaks only to
+the typed `Api` contract (`window.api`), never to Electron or Node APIs, so the same renderer can be
+hosted by other shells (e.g. a future Android wrapper). Narrow viewports and touch are first-class
+targets, not a later adaptation — see [Responsive & touch](#responsive--touch).
+
 ## Colors
 
 Token-first: components consume semantic tokens from `src/renderer/src/assets/main.css`
@@ -176,6 +181,9 @@ Depth comes from luminance, not shadows. Five levels carry the whole hierarchy:
 
 ## Responsive & touch
 
+- **Always-on requirement**: every new surface ships mobile-compatible from the start — narrow
+  viewport *and* touch. Desktop-only affordances must either gain a touch equivalent or be recorded
+  as a known gap in this section and in AGENTS.md; "works with a mouse" is not done.
 - **Breakpoint**: 768px. Below it the sidebar becomes an overlay drawer (280px, max 85vw) over a
   `--backdrop`; it opens from the top-bar hamburger or an edge swipe from the left, and closes on
   navigation, backdrop tap, its close button, or a left swipe over the panel. The editor drops to
@@ -207,6 +215,10 @@ Depth comes from luminance, not shadows. Five levels carry the whole hierarchy:
 - Don't introduce warm hues outside warning and error semantics.
 - Do use mono for code, shortcuts, counts, and identifiers.
 - Don't go pure black; pure black clips the pastels.
+- Do design every surface for narrow viewports and touch from the start; a fine-pointer-only or
+  keyboard-only affordance needs a touch alternative or a documented gap.
+- Don't couple UI components to the desktop shell; they speak tokens plus the typed platform API
+  (`window.api`), never Electron or Node APIs.
 
 ## Preview
 
