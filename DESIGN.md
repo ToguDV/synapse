@@ -183,6 +183,27 @@ Depth comes from luminance, not shadows. Five levels carry the whole hierarchy:
 - 12px: modals, command palette, panels
 - 9999px: status circles, avatar circles
 
+## Responsive & touch
+
+- **Breakpoint**: 768px. Below it the sidebar becomes an overlay drawer (280px, max 85vw) over a
+  `--backdrop`; it opens from the top-bar hamburger or an edge swipe from the left, and closes on
+  navigation, backdrop tap, its close button, or a left swipe over the panel. The editor drops to
+  36px left / 16px right padding and the top bar hides the Ctrl K chip.
+- **Menus on touch devices** (`pointer: coarse`, i.e. no mouse/trackpad as primary pointer) render
+  as bottom sheets: `--surface`, top radius 12px, max 75dvh, 480px max width, 44px rows. With a
+  fine pointer they stay anchored and clamped to the viewport, even in narrow windows.
+- **Search** is full-screen on phones (48px sticky input) and a centered 560px palette from 640px.
+- **Gestures**: long-press (450ms) on a to-do checkbox opens the five-state selector (right-click
+  on desktop); long-press on a page row opens its menu or, after 8px, drags to reorder; block
+  handles are always visible on touch — tap opens the block menu, drag reorders with edge
+  auto-scroll.
+- **Hover-only affordances** (block handle, page actions) are always visible with
+  `any-pointer: coarse`.
+- **Targets**: sheet rows ≥44px, editor handles ≥32px on touch; controls use
+  `touch-action: manipulation` so taps never zoom, while drag handles use `touch-action: none`.
+- Desktop-only for now: multi-block selection and indent/outdent (no Tab key) have no touch
+  alternative yet; see AGENTS.md.
+
 ## Do's and Don'ts
 
 - Do make every action keyboard-reachable, and surface the shortcut in its tooltip.
