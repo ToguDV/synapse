@@ -60,7 +60,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <MenuItem
           action="convert"
           icon={<Icon name="swap" size={16} />}
-          tone="accent"
           label={t('blockMenu.convert')}
           touch={asSheet}
           onSelect={() => setView('convert')}
@@ -68,7 +67,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <MenuItem
           action="duplicate"
           icon={<Icon name="copy" size={16} />}
-          tone="sapphire"
           label={t('blockMenu.duplicate')}
           hint="Ctrl+D"
           touch={asSheet}
@@ -80,7 +78,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <MenuItem
           action="move-up"
           icon={<Icon name="arrow-up" size={16} />}
-          tone="sky"
           label={t('blockMenu.moveUp')}
           touch={asSheet}
           disabled={index === 0}
@@ -92,7 +89,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <MenuItem
           action="move-down"
           icon={<Icon name="arrow-down" size={16} />}
-          tone="sky"
           label={t('blockMenu.moveDown')}
           touch={asSheet}
           disabled={index === blocks.length - 1}
@@ -121,7 +117,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <MenuItem
           action="back"
           icon={<Icon name="arrow-left" size={16} />}
-          tone="sky"
           label={t('blockMenu.convert')}
           touch={asSheet}
           onSelect={() => setView('main')}

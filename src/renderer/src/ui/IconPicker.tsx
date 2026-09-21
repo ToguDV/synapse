@@ -56,7 +56,7 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
             asSheet ? 'min-h-11 py-2' : 'py-1.5'
           }`}
         >
-          <Icon name="x" size={15} tone="neutral" /> {t('iconPicker.remove')}
+          <Icon name="x" size={15} /> {t('iconPicker.remove')}
         </button>
       )}
       <div className="grid grid-cols-8 gap-0.5 p-1">

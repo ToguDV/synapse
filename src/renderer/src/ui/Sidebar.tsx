@@ -563,7 +563,7 @@ export function Sidebar({
             onClick={onClose}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink md:hidden"
           >
-            <Icon name="x" size={14} tone="neutral" />
+            <Icon name="x" size={14} />
           </button>
           <Icon name="chev-down" size={15} className="text-muted" />
         </div>

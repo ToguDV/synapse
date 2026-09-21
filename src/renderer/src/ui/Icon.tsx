@@ -1,14 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type IconTone =
-  | 'neutral'
-  | 'accent'
-  | 'sky'
-  | 'sapphire'
-  | 'info'
-  | 'warning'
-  | 'success'
-  | 'error'
+export type IconTone = 'neutral' | 'error'
 
 export type IconName =
   | 'synapse'
@@ -36,33 +28,12 @@ export type IconName =
   | 'pencil'
   | 'smile'
 
-/* Tono por defecto de cada icono. El color lo aplica `main.css` vía
-   `[data-tone]`, así que las utilidades Tailwind pueden sobrescribirlo. */
-const ICON_TONES: Record<IconName, IconTone> = {
-  synapse: 'accent',
-  search: 'accent',
-  menu: 'neutral',
-  plus: 'accent',
-  'chev-right': 'neutral',
-  'chev-down': 'neutral',
-  moon: 'info',
-  sun: 'warning',
-  monitor: 'sapphire',
-  settings: 'neutral',
-  more: 'neutral',
-  grip: 'neutral',
-  check: 'success',
-  x: 'error',
-  enter: 'neutral',
-  trash: 'error',
-  copy: 'sapphire',
-  'arrow-up': 'sky',
-  'arrow-down': 'sky',
-  'arrow-left': 'sky',
-  swap: 'accent',
-  doc: 'sapphire',
-  pencil: 'warning',
-  smile: 'warning'
+/* Tono por defecto de cada icono. Los iconos son neutros (heredan el color
+   del texto) y solo la papelera mantiene el rojo de acción destructiva. El
+   color lo aplica `main.css` vía `[data-tone]`, así que las utilidades
+   Tailwind pueden sobrescribirlo. */
+const ICON_TONES: Partial<Record<IconName, IconTone>> = {
+  trash: 'error'
 }
 
 const PATHS: Record<IconName, ReactNode> = {
@@ -170,7 +141,7 @@ export function Icon({
   strokeWidth?: number
   className?: string
 }) {
-  const effectiveTone = tone ?? ICON_TONES[name]
+  const effectiveTone = tone ?? ICON_TONES[name] ?? 'neutral'
   return (
     <svg
       data-icon={name}
