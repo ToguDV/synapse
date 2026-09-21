@@ -256,7 +256,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   const placeholder = drag ? (
     <div
       data-drop-placeholder
-      className="pointer-events-none my-0.5 h-0.5 rounded-full bg-accent"
+      className="pointer-events-none my-0.5 h-0.5 rounded-full bg-sapphire"
       style={{ marginLeft: drag.indent * INDENT_STEP_PX }}
     />
   ) : null

@@ -22,35 +22,35 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
   paragraph: {
     type: 'paragraph',
     icon: '¶',
-    textClasses: 'text-base leading-7 whitespace-pre-wrap break-words',
+    textClasses: 'text-base leading-[1.6] whitespace-pre-wrap break-words',
     continuation: 'paragraph',
     textual: true
   },
   heading: {
     type: 'heading',
     icon: 'H1',
-    textClasses: 'text-2xl font-semibold leading-9 whitespace-pre-wrap break-words',
+    textClasses: 'text-2xl font-semibold tracking-[-0.02em] leading-tight whitespace-pre-wrap break-words',
     continuation: 'paragraph',
     textual: true
   },
   bullet: {
     type: 'bullet',
     icon: '•',
-    textClasses: 'text-base leading-7 whitespace-pre-wrap break-words',
+    textClasses: 'text-base leading-[1.6] whitespace-pre-wrap break-words',
     continuation: 'bullet',
     textual: true
   },
   todo: {
     type: 'todo',
     icon: '☑',
-    textClasses: 'text-base leading-7 whitespace-pre-wrap break-words',
+    textClasses: 'text-base leading-[1.6] whitespace-pre-wrap break-words',
     continuation: 'todo',
     textual: true
   },
   code: {
     type: 'code',
     icon: '</>',
-    textClasses: 'font-mono text-sm leading-6 whitespace-pre-wrap break-words',
+    textClasses: 'font-mono text-sm leading-[1.7] whitespace-pre-wrap break-words',
     continuation: 'code',
     textual: true
   },
@@ -58,7 +58,7 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
     type: 'quote',
     icon: '❝',
     textClasses:
-      'border-l-2 border-border-strong pl-3 text-base italic leading-7 text-ink-soft whitespace-pre-wrap break-words',
+      'border-l-[3px] border-accent pl-3.5 text-base leading-[1.6] text-ink-soft whitespace-pre-wrap break-words',
     continuation: 'quote',
     textual: true
   },

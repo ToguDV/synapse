@@ -9,6 +9,7 @@ import { useEditorStore } from '../editor/editorStore'
 import { getBlockDefinition } from '../editor/registry'
 import type { EditorBlock, RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
+import { Icon } from '../ui/Icon'
 import { BlockHandle } from './BlockHandle'
 import { EditableText } from './EditableText'
 
@@ -155,7 +156,7 @@ export function BlockRow({
 
   let prefix: ReactNode = null
   if (block.type === 'bullet') {
-    prefix = <span className="select-none pt-0.5 text-faint">•</span>
+    prefix = <span className="mt-[11px] h-[5px] w-[5px] shrink-0 rounded-full bg-faint" />
   } else if (block.type === 'todo') {
     prefix = (
       <button
@@ -169,13 +170,13 @@ export function BlockRow({
           event.stopPropagation()
         }}
         onClick={() => toggleChecked(block.id)}
-        className={`mt-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] leading-none transition ${
+        className={`mt-[5px] flex h-4 w-4 shrink-0 items-center justify-center rounded border-[1.5px] transition ${
           checked
-            ? 'border-accent bg-accent text-white'
-            : 'border-faint hover:border-muted'
+            ? 'border-success bg-success text-canvas'
+            : 'border-faint text-transparent hover:border-muted'
         }`}
       >
-        {checked ? '✓' : ''}
+        <Icon name="check" size={11} className="text-current" />
       </button>
     )
   }
@@ -184,7 +185,7 @@ export function BlockRow({
     <div className="relative min-w-0 flex-1">
       {block.text === '' && (
         <span
-          className={`pointer-events-none absolute select-none text-faintest ${definition.textClasses}`}
+          className={`pointer-events-none absolute select-none text-faint ${definition.textClasses}`}
         >
           {t(`blocks.${block.type}.placeholder`)}
         </span>
@@ -205,19 +206,17 @@ export function BlockRow({
   let content: ReactNode
   if (block.type === 'divider') {
     content = (
-      <div className="py-2">
-        <hr className="border-border" />
+      <div className="py-[10px]">
+        <hr className="border-border-strong" />
       </div>
     )
   } else if (block.type === 'code') {
     content = (
-      <div className="my-1 w-full rounded-md border border-border bg-panel px-3 py-2">
-        {body}
-      </div>
+      <div className="my-1 w-full rounded-lg border border-border bg-code px-4 py-3.5">{body}</div>
     )
   } else {
     content = (
-      <div className="flex items-start gap-2 py-0.5">
+      <div className={`flex items-start gap-[9px] py-[3px] ${block.type === 'heading' ? 'mt-[19px]' : ''}`}>
         {prefix}
         {body}
       </div>
@@ -232,7 +231,7 @@ export function BlockRow({
       data-checked={block.type === 'todo' ? String(checked) : undefined}
       onMouseDown={handleMouseDown}
       style={{ marginLeft: block.indent * 24 }}
-      className={`group relative rounded ${selected ? 'bg-selected' : ''} ${
+      className={`group relative rounded-md ${selected ? 'bg-selected shadow-[inset_2px_0_0_var(--accent)]' : ''} ${
         dragging ? 'opacity-40' : ''
       }`}
     >

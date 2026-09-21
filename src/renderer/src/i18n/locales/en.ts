@@ -68,6 +68,9 @@ export const en = {
   },
   blocks: {
     loading: 'Loading blocks…',
+    handle: {
+      label: 'Block options'
+    },
     paragraph: {
       label: 'Text',
       description: 'Plain paragraph',
