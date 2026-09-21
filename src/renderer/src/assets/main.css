@@ -2,46 +2,96 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Tokens semánticos de color: claro por defecto, `.dark` en <html> para oscuro. */
+/* Mocha Synapse: Latte (claro) por defecto, Mocha (oscuro) bajo `.dark`.
+   El mapa de tokens vive en DESIGN.md; los componentes consumen solo estos nombres. */
 :root {
-  --canvas: #ffffff;
-  --panel: #f7f7f5;
+  color-scheme: light;
+
+  --canvas: #eff1f5;
+  --panel: #e6e9ef;
   --surface: #ffffff;
-  --hover: #efefed;
-  --border: #e9e9e7;
-  --border-strong: #d3d1cb;
-  --ink: #37352f;
-  --ink-soft: #57564f;
-  --muted: #6f6e69;
-  --faint: #8f8e8a;
-  --faintest: #b3b1ad;
-  --accent: #2383e2;
-  --accent-soft: rgb(35 131 226 / 0.2);
-  --selected: rgb(35 131 226 / 0.1);
+  --surface-raised: #ffffff;
+  --code-bg: #dce0e8;
+
+  --hover: rgb(76 79 105 / 0.06);
+  --hover-strong: rgb(76 79 105 / 0.1);
+  --border: rgb(76 79 105 / 0.14);
+  --border-strong: rgb(76 79 105 / 0.24);
+
+  --ink: #4c4f69;
+  --ink-soft: #5c5f77;
+  --muted: #6c6f85;
+  --faint: #8c8fa1;
+  --faintest: #9ca0b0;
+
+  --accent: #8839ef;
+  --accent-hover: color-mix(in oklab, #8839ef 86%, black);
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(136 57 239 / 0.1);
+  --selected: rgb(136 57 239 / 0.08);
+  --ring: rgb(136 57 239 / 0.22);
+  --glow: rgb(136 57 239 / 0.1);
+
+  --success: #40a02b;
+  --warning: #df8e1d;
+  --error: #d20f39;
+  --info: #1e66f5;
+  --sapphire: #209fb5;
+  --sky: #04a5e5;
+
+  --backdrop: rgb(76 79 105 / 0.3);
+  --shadow-pop: 0 8px 20px rgb(76 79 105 / 0.14);
+  --shadow-modal: 0 24px 48px rgb(76 79 105 / 0.2);
 }
 
 .dark {
-  --canvas: #171717;
-  --panel: #0a0a0a;
-  --surface: #171717;
-  --hover: #262626;
-  --border: #262626;
-  --border-strong: #404040;
-  --ink: #f5f5f5;
-  --ink-soft: #d4d4d4;
-  --muted: #a3a3a3;
-  --faint: #737373;
-  --faintest: #525252;
-  --accent: #3b82f6;
-  --accent-soft: rgb(59 130 246 / 0.3);
-  --selected: rgb(59 130 246 / 0.1);
+  color-scheme: dark;
+
+  --canvas: #1e1e2e;
+  --panel: #181825;
+  --surface: #313244;
+  --surface-raised: #45475a;
+  --code-bg: #11111b;
+
+  --hover: rgb(205 214 244 / 0.07);
+  --hover-strong: rgb(205 214 244 / 0.12);
+  --border: rgb(205 214 244 / 0.1);
+  --border-strong: rgb(205 214 244 / 0.18);
+
+  --ink: #cdd6f4;
+  --ink-soft: #bac2de;
+  --muted: #a6adc8;
+  --faint: #7f849c;
+  --faintest: #6c7086;
+
+  --accent: #cba6f7;
+  --accent-hover: #b4befe;
+  --accent-ink: #1e1e2e;
+  --accent-soft: rgb(203 166 247 / 0.16);
+  --selected: rgb(203 166 247 / 0.12);
+  --ring: rgb(203 166 247 / 0.3);
+  --glow: rgb(203 166 247 / 0.15);
+
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --error: #f38ba8;
+  --info: #89b4fa;
+  --sapphire: #74c7ec;
+  --sky: #89dceb;
+
+  --backdrop: rgb(17 17 27 / 0.55);
+  --shadow-pop: 0 8px 20px rgb(0 0 0 / 0.35);
+  --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.45);
 }
 
 @theme inline {
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-code: var(--code-bg);
   --color-hover: var(--hover);
+  --color-hover-strong: var(--hover-strong);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-ink: var(--ink);
@@ -50,8 +100,20 @@
   --color-faint: var(--faint);
   --color-faintest: var(--faintest);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-selected: var(--selected);
+  --color-ring: var(--ring);
+  --color-glow: var(--glow);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+  --color-sapphire: var(--sapphire);
+  --color-sky: var(--sky);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-modal: var(--shadow-modal);
 }
 
 /* Emojis a color empaquetados (el contenedor Linux no trae fuente de emojis).
@@ -66,8 +128,73 @@
     U+1F1E6-1F1FF;
 }
 
+/* Inter y JetBrains Mono (OFL) autohospedadas: subset latin de Google Fonts,
+   servidas como fuente variable para cubrir todos los pesos con un archivo. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/inter-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
 @theme {
   --font-sans:
-    'Synapse Emoji', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    'Synapse Emoji', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  --font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Escala tipográfica: 11, 12, 13, 16, 20, 24, 32, 40 (DESIGN.md). */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.45;
+  --text-xs: 12px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 13px;
+  --text-sm--line-height: 1.5;
+  --text-base: 16px;
+  --text-base--line-height: 1.6;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 32px;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 40px;
+  --text-4xl--line-height: 1.1;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: 400 16px/1.6 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

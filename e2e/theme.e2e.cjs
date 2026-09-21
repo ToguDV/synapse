@@ -164,27 +164,27 @@ async function stage4Tokens(page) {
   await waitTheme(page, 'light')
 
   let dom = await themeDom(page)
-  check(steps, 'en claro el token canvas es blanco', dom.canvasVar === '#ffffff', dom)
+  check(steps, 'en claro el token canvas es Latte', dom.canvasVar === '#eff1f5', dom)
   check(
     steps,
     'el contenedor de la app usa el fondo claro',
-    dom.appBackground === 'rgb(255, 255, 255)',
+    dom.appBackground === 'rgb(239, 241, 245)',
     dom
   )
-  check(steps, 'el texto en claro es oscuro', dom.appColor === 'rgb(55, 53, 47)', dom)
+  check(steps, 'el texto en claro es oscuro', dom.appColor === 'rgb(76, 79, 105)', dom)
   await shot(page, 'e2e-theme-light.png')
 
   await setThemePreference(page, 'dark')
   await waitTheme(page, 'dark')
   dom = await themeDom(page)
-  check(steps, 'en oscuro el token canvas es neutro-900', dom.canvasVar === '#171717', dom)
+  check(steps, 'en oscuro el token canvas es Mocha', dom.canvasVar === '#1e1e2e', dom)
   check(
     steps,
     'el contenedor de la app usa el fondo oscuro',
-    dom.appBackground === 'rgb(23, 23, 23)',
+    dom.appBackground === 'rgb(30, 30, 46)',
     dom
   )
-  check(steps, 'el texto en oscuro es claro', dom.appColor === 'rgb(245, 245, 245)', dom)
+  check(steps, 'el texto en oscuro es claro', dom.appColor === 'rgb(205, 214, 244)', dom)
 
   return { steps }
 }
@@ -196,7 +196,7 @@ async function stage5SearchTheme(page) {
   const panel = await page.evaluate(
     () => getComputedStyle(document.querySelector('[data-search-palette] > div')).backgroundColor
   )
-  check(steps, 'la paleta de búsqueda usa el fondo oscuro del tema', panel === 'rgb(23, 23, 23)', panel)
+  check(steps, 'la paleta de búsqueda usa el fondo oscuro del tema', panel === 'rgb(49, 50, 68)', panel)
   await page.keyboard.press('Escape')
   await page.waitForSelector('[data-search-palette]', { state: 'detached' })
 
