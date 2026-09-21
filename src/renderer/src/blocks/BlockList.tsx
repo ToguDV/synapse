@@ -20,6 +20,8 @@ interface PendingDrag {
   blockId: string
   x: number
   y: number
+  pointerId: number
+  threshold: number
   source: HTMLButtonElement
   anchor: RectAnchor
 }
@@ -31,7 +33,10 @@ interface DragState {
 }
 
 const DRAG_THRESHOLD_PX = 4
+const TOUCH_DRAG_THRESHOLD_PX = 8
 const INDENT_STEP_PX = 24
+const AUTOSCROLL_EDGE_PX = 56
+const AUTOSCROLL_STEP_PX = 12
 
 function caretAnchorFor(blockId: string, fallback: RectAnchor): RectAnchor {
   const element = document.querySelector<HTMLElement>(
@@ -119,6 +124,10 @@ export function BlockList({ pageId }: { pageId: string }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const pendingRef = useRef<PendingDrag | null>(null)
   const dragRef = useRef<DragState | null>(null)
+  const pointRef = useRef<{ x: number; y: number } | null>(null)
+  const scrollRef = useRef<HTMLElement | null>(null)
+  const scrollDirectionRef = useRef(0)
+  const scrollFrameRef = useRef<number | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const [menu, setMenu] = useState<
     { blockId: string; anchor: RectAnchor; source: HTMLButtonElement } | null
@@ -143,23 +152,68 @@ export function BlockList({ pageId }: { pageId: string }) {
   }, [focusRequest])
 
   useEffect(() => {
+    const stopAutoScroll = (): void => {
+      scrollDirectionRef.current = 0
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current)
+        scrollFrameRef.current = null
+      }
+    }
+
+    const stepAutoScroll = (): void => {
+      const container = scrollRef.current
+      const direction = scrollDirectionRef.current
+      if (!container || direction === 0) {
+        scrollFrameRef.current = null
+        return
+      }
+      container.scrollTop += direction * AUTOSCROLL_STEP_PX
+      const pending = pendingRef.current
+      const point = pointRef.current
+      if (pending && point && dragRef.current) {
+        const drop = computeDrop(rootRef.current, pending.blockId, point.x, point.y)
+        if (drop) {
+          dragRef.current = { blockId: pending.blockId, ...drop }
+          setDrag(dragRef.current)
+        }
+      }
+      scrollFrameRef.current = requestAnimationFrame(stepAutoScroll)
+    }
+
+    const updateAutoScroll = (clientY: number): void => {
+      const container = scrollRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      let direction = 0
+      if (clientY < rect.top + AUTOSCROLL_EDGE_PX) direction = -1
+      else if (clientY > rect.bottom - AUTOSCROLL_EDGE_PX) direction = 1
+      scrollDirectionRef.current = direction
+      if (direction !== 0 && scrollFrameRef.current === null) {
+        scrollFrameRef.current = requestAnimationFrame(stepAutoScroll)
+      }
+    }
+
     const onMove = (event: PointerEvent) => {
       const pending = pendingRef.current
-      if (!pending) return
+      if (!pending || pending.pointerId !== event.pointerId) return
       const drop = computeDrop(rootRef.current, pending.blockId, event.clientX, event.clientY)
       if (!drop) return
       if (!dragRef.current) {
-        if (Math.hypot(event.clientX - pending.x, event.clientY - pending.y) < DRAG_THRESHOLD_PX) {
+        if (Math.hypot(event.clientX - pending.x, event.clientY - pending.y) < pending.threshold) {
           return
         }
         document.body.classList.add('select-none')
+        scrollRef.current = rootRef.current?.closest<HTMLElement>('[data-editor-scroll]') ?? null
       }
+      pointRef.current = { x: event.clientX, y: event.clientY }
       dragRef.current = { blockId: pending.blockId, ...drop }
       setDrag(dragRef.current)
+      updateAutoScroll(event.clientY)
     }
     const onUp = () => {
       const pending = pendingRef.current
       pendingRef.current = null
+      stopAutoScroll()
       if (!pending) return
       document.body.classList.remove('select-none')
       const active = dragRef.current
@@ -175,25 +229,30 @@ export function BlockList({ pageId }: { pageId: string }) {
         })
       }
     }
+    const onCancel = () => {
+      pendingRef.current = null
+      dragRef.current = null
+      stopAutoScroll()
+      document.body.classList.remove('select-none')
+      setDrag(null)
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (!pendingRef.current && !dragRef.current) return
       event.preventDefault()
       event.stopPropagation()
-      pendingRef.current = null
-      dragRef.current = null
-      document.body.classList.remove('select-none')
-      setDrag(null)
+      onCancel()
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('pointercancel', onCancel)
     window.addEventListener('keydown', onKeyDown, true)
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointercancel', onCancel)
       window.removeEventListener('keydown', onKeyDown, true)
+      stopAutoScroll()
       document.body.classList.remove('select-none')
     }
   }, [])
@@ -216,6 +275,8 @@ export function BlockList({ pageId }: { pageId: string }) {
       blockId,
       x: event.clientX,
       y: event.clientY,
+      pointerId: event.pointerId,
+      threshold: event.pointerType === 'mouse' ? DRAG_THRESHOLD_PX : TOUCH_DRAG_THRESHOLD_PX,
       source: event.currentTarget,
       anchor: rectAnchor(event.currentTarget)
     }

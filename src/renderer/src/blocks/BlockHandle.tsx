@@ -16,9 +16,9 @@ export function BlockHandle({ visible, active = false, onPointerDown }: BlockHan
       data-block-handle
       aria-label={t('blocks.handle.label')}
       onPointerDown={onPointerDown}
-      className={`absolute top-1 -left-7 flex h-6 w-6 cursor-grab items-center justify-center rounded-md transition hover:bg-hover hover:text-ink active:cursor-grabbing ${
+      className={`absolute top-1 -left-7 flex h-6 w-6 cursor-grab touch-none items-center justify-center rounded-md transition select-none hover:bg-hover hover:text-ink active:cursor-grabbing coarse:-left-8 coarse:h-8 coarse:w-8 ${
         active ? 'text-ink' : 'text-muted'
-      } ${visible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+      } ${visible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 coarse:opacity-100'}`}
     >
       <Icon name="grip" size={17} />
     </button>

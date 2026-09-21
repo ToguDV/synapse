@@ -11,6 +11,7 @@ import { useEditorStore } from '../editor/editorStore'
 import { getBlockDefinition } from '../editor/registry'
 import type { EditorBlock, RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
+import { useLongPress } from '../ui/longPress'
 import { rectAnchor, rectAnchorIfConnected } from '../ui/rectAnchor'
 import { StatusMenu, TODO_STATUS_LABEL_KEYS } from '../ui/StatusMenu'
 import { TodoStatusBox } from '../ui/TodoStatusBox'
@@ -56,6 +57,9 @@ export function BlockRow({
   const status = block.status ?? 'todo'
   const statusRef = useRef<HTMLButtonElement>(null)
   const [statusMenu, setStatusMenu] = useState<RectAnchor | null>(null)
+  const statusLongPress = useLongPress({
+    onLongPress: (target) => setStatusMenu(rectAnchor(target))
+  })
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
     const element = event.currentTarget
@@ -180,13 +184,19 @@ export function BlockRow({
             event.preventDefault()
             event.stopPropagation()
           }}
-          onClick={() => toggleDone(block.id)}
-          onContextMenu={(event) => {
-            event.preventDefault()
+          onPointerDown={(event) => {
             event.stopPropagation()
-            setStatusMenu(rectAnchor(event.currentTarget))
+            statusLongPress.onPointerDown(event)
           }}
-          className="mt-[5px] shrink-0 rounded"
+          onPointerMove={statusLongPress.onPointerMove}
+          onPointerUp={statusLongPress.onPointerUp}
+          onPointerCancel={statusLongPress.onPointerCancel}
+          onClick={() => {
+            if (statusLongPress.consumeClick()) return
+            toggleDone(block.id)
+          }}
+          onContextMenu={statusLongPress.onContextMenu}
+          className="relative mt-[5px] shrink-0 touch-none rounded before:absolute before:-inset-1 before:content-['']"
         >
           <TodoStatusBox status={status} />
         </button>
