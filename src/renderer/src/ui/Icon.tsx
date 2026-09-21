@@ -158,11 +158,13 @@ export function Icon({
   name,
   size = 16,
   tone,
+  strokeWidth = 2,
   className
 }: {
   name: IconName
   size?: number
   tone?: IconTone
+  strokeWidth?: number
   className?: string
 }) {
   const effectiveTone = tone ?? ICON_TONES[name]
@@ -175,7 +177,7 @@ export function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

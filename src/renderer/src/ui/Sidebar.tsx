@@ -202,12 +202,12 @@ function PageTreeItem({
             data-expanded={expanded}
             aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
             onClick={() => toggleExpanded(page.id)}
-            className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
+            className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
           >
-            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={14} />
+            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={16} strokeWidth={2.4} />
           </button>
         ) : (
-          <span className="h-5 w-3.5 shrink-0" />
+          <span className="h-5 w-4 shrink-0" />
         )}
         {isRenaming ? (
           <RenameInput
