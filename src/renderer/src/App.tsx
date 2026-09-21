@@ -8,7 +8,9 @@ import { useThemeStore } from './store/themeStore'
 import { Sidebar } from './ui/Sidebar'
 import { BlockList } from './blocks/BlockList'
 import { Breadcrumbs } from './ui/Breadcrumbs'
+import { Icon } from './ui/Icon'
 import { IconPicker } from './ui/IconPicker'
+import { Kbd } from './ui/Kbd'
 import { SearchPalette } from './ui/SearchPalette'
 import { rectAnchor, rectAnchorIfConnected } from './ui/rectAnchor'
 import { fitTitleFontSize, TITLE_FONT_MAX, titleIconOffset, titleLineHeight } from './ui/titleFit'
@@ -116,66 +118,82 @@ function App() {
         {!ready || !activePage ? (
           <p className="mt-24 self-center text-sm text-faint">{t('common.loading')}</p>
         ) : (
-          <div className="w-full max-w-2xl self-center px-8 py-16">
-            <Breadcrumbs pageId={activePage.id} />
-            <div className="group flex items-start gap-2">
+          <>
+            <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-canvas py-2 pr-3 pl-4">
+              <Breadcrumbs pageId={activePage.id} />
               <button
-                ref={iconButtonRef}
                 type="button"
-                data-icon-button
-                title={activePage.icon ? t('app.changeIcon') : t('app.addIcon')}
-                onClick={(event) => setIconAnchor(rectAnchor(event.currentTarget))}
-                style={{
-                  marginTop: titleIconOffset(titleSize, iconButtonRef.current?.offsetHeight ?? 48)
-                }}
-                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-3xl transition hover:bg-hover ${
-                  activePage.icon ? '' : 'opacity-40 group-hover:opacity-100'
-                }`}
+                onClick={() => setSearchOpen(true)}
+                className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-muted transition hover:bg-hover hover:text-ink"
               >
-                {activePage.icon ?? '😀'}
+                <Icon name="search" size={14} />
+                {t('sidebar.search')}
+                <Kbd className="ml-1">Ctrl K</Kbd>
               </button>
-              <textarea
-                ref={titleRef}
-                data-page-title-input
-                rows={1}
-                value={activePage.title}
-                placeholder={t('common.untitled')}
-                onChange={(event) => {
-                  const raw = event.target.value
-                  const clean = raw.replace(/[\r\n]+/g, ' ')
-                  renamePage(activePage.id, clean)
-                  if (clean !== raw) {
-                    const caret = raw
-                      .slice(0, event.target.selectionStart)
-                      .replace(/[\r\n]+/g, ' ').length
-                    requestAnimationFrame(() => {
-                      titleRef.current?.setSelectionRange(caret, caret)
-                    })
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                    event.preventDefault()
-                  }
-                }}
-                style={{ fontSize: `${titleSize}px`, lineHeight: `${titleLineHeight(titleSize)}px` }}
-                className="w-full resize-none overflow-hidden break-words bg-transparent font-bold tracking-tight outline-none placeholder:text-faintest"
-              />
             </div>
-            <BlockList pageId={activePage.id} />
-            {iconAnchor && (
-              <IconPicker
-                anchor={iconAnchor}
-                getAnchor={() => rectAnchorIfConnected(iconButtonRef.current, iconAnchor)}
-                current={activePage.icon}
-                onSelect={(icon) => {
-                  setPageIcon(activePage.id, icon)
-                  setIconAnchor(null)
-                }}
-                onClose={() => setIconAnchor(null)}
-              />
-            )}
-          </div>
+            <div className="mx-auto w-full max-w-[640px] px-14 py-10">
+              <div className="group flex items-start gap-2">
+                <button
+                  ref={iconButtonRef}
+                  type="button"
+                  data-icon-button
+                  title={activePage.icon ? t('app.changeIcon') : t('app.addIcon')}
+                  onClick={(event) => setIconAnchor(rectAnchor(event.currentTarget))}
+                  style={{
+                    marginTop: titleIconOffset(titleSize, iconButtonRef.current?.offsetHeight ?? 40)
+                  }}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-2xl transition hover:bg-hover ${
+                    activePage.icon ? '' : 'opacity-40 group-hover:opacity-100'
+                  }`}
+                >
+                  {activePage.icon ?? '😀'}
+                </button>
+                <textarea
+                  ref={titleRef}
+                  data-page-title-input
+                  rows={1}
+                  value={activePage.title}
+                  placeholder={t('common.untitled')}
+                  onChange={(event) => {
+                    const raw = event.target.value
+                    const clean = raw.replace(/[\r\n]+/g, ' ')
+                    renamePage(activePage.id, clean)
+                    if (clean !== raw) {
+                      const caret = raw
+                        .slice(0, event.target.selectionStart)
+                        .replace(/[\r\n]+/g, ' ').length
+                      requestAnimationFrame(() => {
+                        titleRef.current?.setSelectionRange(caret, caret)
+                      })
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                      event.preventDefault()
+                    }
+                  }}
+                  style={{
+                    fontSize: `${titleSize}px`,
+                    lineHeight: `${titleLineHeight(titleSize)}px`
+                  }}
+                  className="w-full resize-none overflow-hidden break-words bg-transparent font-semibold tracking-[-0.02em] outline-none placeholder:text-faint"
+                />
+              </div>
+              <BlockList pageId={activePage.id} />
+              {iconAnchor && (
+                <IconPicker
+                  anchor={iconAnchor}
+                  getAnchor={() => rectAnchorIfConnected(iconButtonRef.current, iconAnchor)}
+                  current={activePage.icon}
+                  onSelect={(icon) => {
+                    setPageIcon(activePage.id, icon)
+                    setIconAnchor(null)
+                  }}
+                  onClose={() => setIconAnchor(null)}
+                />
+              )}
+            </div>
+          </>
         )}
       </main>
       {searchOpen && (

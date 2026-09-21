@@ -12,6 +12,7 @@ export const en = {
     expand: 'Expand',
     addSubpage: 'Add subpage',
     pageOptions: 'Page options',
+    pagesLabel: 'Pages',
     newPage: 'New page',
     search: 'Search',
     searchTooltip: 'Search (Ctrl+K)',
@@ -28,6 +29,7 @@ export const en = {
     light: 'Light',
     dark: 'Dark',
     system: 'System',
+    ariaLabel: 'Theme',
     current: 'Theme: {{theme}}',
     tooltip: 'Theme: {{theme}}. Click to change'
   },

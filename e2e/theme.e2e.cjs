@@ -46,11 +46,9 @@ async function waitTheme(page, theme) {
 }
 
 async function setThemePreference(page, preference) {
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const current = await page.getAttribute('[data-theme-toggle]', 'data-theme-preference')
-    if (current === preference) return
-    await page.click('[data-theme-toggle]')
-  }
+  const current = await page.getAttribute('[data-theme-toggle]', 'data-theme-preference')
+  if (current === preference) return
+  await page.click(`[data-theme-option="${preference}"]`)
   await page.waitForFunction(
     (expected) =>
       document.querySelector('[data-theme-toggle]')?.getAttribute('data-theme-preference') ===
@@ -101,25 +99,25 @@ async function stage1System(page) {
 async function stage2Toggle(page) {
   const steps = []
   let dom = await themeDom(page)
-  check(steps, 'el ciclo arranca en Sistema', dom.preference === 'system', dom)
+  check(steps, 'el selector arranca en Sistema', dom.preference === 'system', dom)
 
-  await page.click('[data-theme-toggle]')
+  await page.click('[data-theme-option="light"]')
   await waitTheme(page, 'light')
   dom = await themeDom(page)
-  check(steps, 'primer clic fija el tema claro', dom.preference === 'light' && !dom.darkClass, dom)
+  check(steps, 'elegir Claro fija el tema claro', dom.preference === 'light' && !dom.darkClass, dom)
 
-  await page.click('[data-theme-toggle]')
+  await page.click('[data-theme-option="dark"]')
   await waitTheme(page, 'dark')
   dom = await themeDom(page)
-  check(steps, 'segundo clic fija el tema oscuro', dom.preference === 'dark' && dom.darkClass, dom)
+  check(steps, 'elegir Oscuro fija el tema oscuro', dom.preference === 'dark' && dom.darkClass, dom)
   await shot(page, 'e2e-theme-dark.png')
 
-  await page.click('[data-theme-toggle]')
+  await page.click('[data-theme-option="system"]')
   await waitTheme(page, 'light')
   dom = await themeDom(page)
   check(
     steps,
-    'tercer clic vuelve a Sistema y resuelve claro',
+    'volver a Sistema resuelve claro',
     dom.preference === 'system' && !dom.darkClass,
     dom
   )

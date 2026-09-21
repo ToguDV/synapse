@@ -1,6 +1,7 @@
 import { useTranslation } from '../i18n'
 import { usePagesStore } from '../store/pagesStore'
 import { pageAncestors } from '../store/pageTree'
+import { Icon } from './Icon'
 
 export function Breadcrumbs({ pageId }: { pageId: string }) {
   const { t } = useTranslation()
@@ -15,7 +16,7 @@ export function Breadcrumbs({ pageId }: { pageId: string }) {
     <nav
       data-breadcrumbs
       aria-label={t('breadcrumbs.ariaLabel')}
-      className="mb-4 flex flex-wrap items-center gap-1 text-sm text-faint"
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-xs text-faint"
     >
       {ancestors.map((page) => (
         <span key={page.id} className="flex min-w-0 items-center gap-1">
@@ -23,15 +24,15 @@ export function Breadcrumbs({ pageId }: { pageId: string }) {
             type="button"
             data-breadcrumb={page.id}
             onClick={() => selectPage(page.id)}
-            className="max-w-48 truncate rounded px-1 py-0.5 transition hover:bg-hover hover:text-ink-soft"
+            className="max-w-48 truncate rounded-md px-1.5 py-1 font-medium transition hover:bg-hover hover:text-ink"
           >
             {page.icon && <span className="mr-1">{page.icon}</span>}
             {page.title || t('common.untitled')}
           </button>
-          <span aria-hidden="true">/</span>
+          <Icon name="chev-right" size={12} className="shrink-0 text-faintest" />
         </span>
       ))}
-      <span data-breadcrumb-current className="truncate px-1 text-ink-soft">
+      <span data-breadcrumb-current className="truncate px-1.5 py-1 font-medium text-ink-soft">
         {current.icon && <span className="mr-1">{current.icon}</span>}
         {current.title || t('common.untitled')}
       </span>

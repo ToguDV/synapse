@@ -1,13 +1,57 @@
 import { useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import type { ThemePreference } from '../../../shared/theme'
 import type { RectAnchor } from '../editor/types'
-import { useTranslation } from '../i18n'
+import { useTranslation, type MessageKey } from '../i18n'
 import { usePagesStore } from '../store/pagesStore'
-import { THEME_META, useThemeStore } from '../store/themeStore'
+import { useThemeStore } from '../store/themeStore'
 import { buildPageTree, collectDescendantIds, type PageNode } from '../store/pageTree'
 import { ConfirmDialog } from './ConfirmDialog'
+import { Icon, type IconName } from './Icon'
 import { IconPicker } from './IconPicker'
+import { Kbd } from './Kbd'
 import { PageMenu } from './PageMenu'
 import { rectAnchor, rectAnchorIfConnected } from './rectAnchor'
+
+const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
+
+const THEME_META: Record<ThemePreference, { icon: IconName; labelKey: MessageKey }> = {
+  system: { icon: 'monitor', labelKey: 'theme.system' },
+  light: { icon: 'sun', labelKey: 'theme.light' },
+  dark: { icon: 'moon', labelKey: 'theme.dark' }
+}
+
+function ThemeSegmented() {
+  const { t } = useTranslation()
+  const preference = useThemeStore((state) => state.preference)
+  const setPreference = useThemeStore((state) => state.setPreference)
+
+  return (
+    <div
+      data-theme-toggle
+      data-theme-preference={preference}
+      role="group"
+      aria-label={t('theme.ariaLabel')}
+      className="inline-flex gap-0.5 rounded-lg border border-border p-0.5"
+    >
+      {THEME_OPTIONS.map((option) => {
+        const meta = THEME_META[option]
+        return (
+          <button
+            key={option}
+            type="button"
+            data-theme-option={option}
+            aria-pressed={option === preference}
+            title={t(meta.labelKey)}
+            onClick={() => setPreference(option)}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-faint transition hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink"
+          >
+            <Icon name={meta.icon} size={14} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function RenameInput({
   initial,
@@ -44,7 +88,7 @@ function RenameInput({
           event.currentTarget.blur()
         }
       }}
-      className="mx-1 min-w-0 flex-1 rounded border border-accent bg-surface px-1 py-0.5 text-sm text-ink outline-none"
+      className="mx-1 min-w-0 flex-1 rounded-md border border-accent bg-surface px-1.5 py-0.5 text-sm text-ink ring-[3px] ring-ring outline-none"
     />
   )
 }
@@ -92,10 +136,8 @@ function PageTreeItem({
         data-page-depth={depth}
         data-active={isActive}
         style={{ paddingLeft: depth * 12 }}
-        className={`group flex items-center gap-0.5 rounded-md pr-1 transition ${
-          isActive
-            ? 'bg-hover text-ink'
-            : 'text-muted hover:bg-hover/60 hover:text-ink-soft'
+        className={`group flex h-[30px] items-center gap-1 rounded-md pr-1 transition ${
+          isActive ? 'bg-selected text-ink' : 'text-muted hover:bg-hover hover:text-ink'
         }`}
       >
         {hasChildren ? (
@@ -105,12 +147,12 @@ function PageTreeItem({
             data-expanded={expanded}
             aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
             onClick={() => toggleExpanded(page.id)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs text-faint transition hover:bg-hover hover:text-ink-soft"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
           >
-            {expanded ? '▾' : '▸'}
+            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={13} />
           </button>
         ) : (
-          <span className="h-6 w-6 shrink-0" />
+          <span className="h-5 w-5 shrink-0" />
         )}
         {isRenaming ? (
           <RenameInput
@@ -124,10 +166,10 @@ function PageTreeItem({
             data-page-title
             onClick={() => selectPage(page.id)}
             onDoubleClick={() => onStartRename(page.id)}
-            className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-1 text-left text-sm"
+            className="flex h-full min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-medium"
           >
             {page.icon && (
-              <span data-page-icon className="shrink-0 text-base leading-none">
+              <span data-page-icon className="shrink-0 text-sm leading-none">
                 {page.icon}
               </span>
             )}
@@ -139,18 +181,18 @@ function PageTreeItem({
           data-page-action="add-child"
           title={t('sidebar.addSubpage')}
           onClick={() => void createPage(page.id)}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
-          +
+          <Icon name="plus" size={13} />
         </button>
         <button
           type="button"
           data-page-action="open-menu"
           title={t('sidebar.pageOptions')}
           onClick={openMenu}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-sm text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
         >
-          ⋯
+          <Icon name="more" size={13} />
         </button>
       </div>
       {hasChildren && expanded && (
@@ -180,10 +222,6 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const deletePage = usePagesStore((state) => state.deletePage)
   const renamePage = usePagesStore((state) => state.renamePage)
   const setPageIcon = usePagesStore((state) => state.setPageIcon)
-  const themePreference = useThemeStore((state) => state.preference)
-  const cycleTheme = useThemeStore((state) => state.cyclePreference)
-  const theme = THEME_META[themePreference]
-  const themeLabel = t(theme.labelKey)
   const [menu, setMenu] = useState<
     { pageId: string; source: HTMLButtonElement; anchor: RectAnchor } | null
   >(null)
@@ -199,50 +237,63 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const descendants = confirmPage ? collectDescendantIds(pages, confirmPage.id).length : 0
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-panel">
-      <div className="flex items-center justify-between px-4 py-3">
-        <span className="text-sm font-semibold tracking-wide text-ink-soft">Synapse</span>
+    <aside className="flex w-[220px] shrink-0 flex-col border-r border-border bg-panel">
+      <div className="px-2.5 pt-2.5">
+        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
+          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-accent-soft font-mono text-2xs font-semibold text-accent">
+            SY
+          </span>
+          <span className="flex-1 truncate text-sm font-semibold text-ink">Synapse</span>
+          <Icon name="chev-down" size={14} className="text-faint" />
+        </div>
         <button
           type="button"
-          data-page-action="new-root"
-          onClick={() => void createPage(null)}
-          title={t('sidebar.newPage')}
-          className="rounded-md px-2 text-lg leading-6 text-muted transition hover:bg-hover hover:text-ink"
+          data-search-trigger
+          onClick={onOpenSearch}
+          title={t('sidebar.searchTooltip')}
+          className="mt-2 flex h-7 w-full items-center gap-2 rounded-md border border-border bg-surface px-2 text-xs text-faint transition hover:border-border-strong hover:text-muted"
         >
-          +
+          <Icon name="search" size={13} />
+          <span className="flex-1 text-left">{t('sidebar.search')}</span>
+          <Kbd className="border-transparent bg-transparent px-0">Ctrl K</Kbd>
         </button>
       </div>
-      <button
-        type="button"
-        data-search-trigger
-        onClick={onOpenSearch}
-        title={t('sidebar.searchTooltip')}
-        className="mx-2 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
-      >
-        <span aria-hidden>🔍</span>
-        <span className="flex-1 text-left">{t('sidebar.search')}</span>
-        <span className="text-xs text-faintest">Ctrl K</span>
-      </button>
-      <nav className="flex-1 overflow-y-auto px-2 pb-3">
-        {tree.map((node) => (
-          <PageTreeItem
-            key={node.page.id}
-            node={node}
-            depth={0}
-            renamingId={renamingId}
-            onStartRename={(id) => setRenamingId(id)}
-            onRenameCommit={(id, title) => {
-              renamePage(id, title)
-              setRenamingId(null)
-            }}
-            onRenameCancel={() => setRenamingId(null)}
-            onOpenMenu={(pageId, source) => {
-              setMenu({ pageId, source, anchor: rectAnchor(source) })
-              setIconFor(null)
-            }}
-          />
-        ))}
-      </nav>
+      <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
+        <div className="mt-4 mb-1 flex items-center justify-between pr-1 pl-2">
+          <p className="text-2xs font-semibold tracking-[0.05em] text-faint uppercase">
+            {t('sidebar.pagesLabel')}
+          </p>
+          <button
+            type="button"
+            data-page-action="new-root"
+            onClick={() => void createPage(null)}
+            title={t('sidebar.newPage')}
+            className="flex h-5 w-5 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
+          >
+            <Icon name="plus" size={13} />
+          </button>
+        </div>
+        <nav className="min-h-0 flex-1 overflow-y-auto">
+          {tree.map((node) => (
+            <PageTreeItem
+              key={node.page.id}
+              node={node}
+              depth={0}
+              renamingId={renamingId}
+              onStartRename={(id) => setRenamingId(id)}
+              onRenameCommit={(id, title) => {
+                renamePage(id, title)
+                setRenamingId(null)
+              }}
+              onRenameCancel={() => setRenamingId(null)}
+              onOpenMenu={(pageId, source) => {
+                setMenu({ pageId, source, anchor: rectAnchor(source) })
+                setIconFor(null)
+              }}
+            />
+          ))}
+        </nav>
+      </div>
       {menu && menuPage && (
         <PageMenu
           pageId={menuPage.id}
@@ -286,17 +337,18 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           onCancel={() => setConfirmId(null)}
         />
       )}
-      <button
-        type="button"
-        data-theme-toggle
-        data-theme-preference={themePreference}
-        onClick={cycleTheme}
-        title={t('theme.tooltip', { theme: themeLabel })}
-        className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
-      >
-        <span aria-hidden>{theme.icon}</span>
-        <span className="flex-1 text-left">{t('theme.current', { theme: themeLabel })}</span>
-      </button>
+      <div className="flex items-center justify-between gap-2 border-t border-border p-2">
+        <button
+          type="button"
+          aria-label={t('sidebar.search')}
+          title={t('sidebar.searchTooltip')}
+          onClick={onOpenSearch}
+          className="flex h-7 w-7 items-center justify-center rounded-md text-faint transition hover:bg-hover hover:text-ink"
+        >
+          <Icon name="search" size={14} />
+        </button>
+        <ThemeSegmented />
+      </div>
     </aside>
   )
 }

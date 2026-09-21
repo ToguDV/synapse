@@ -6,15 +6,6 @@ import {
   type ResolvedTheme,
   type ThemePreference
 } from '../../../shared/theme'
-import type { MessageKey } from '../i18n'
-
-export const THEME_CYCLE: ThemePreference[] = ['light', 'dark', 'system']
-
-export const THEME_META: Record<ThemePreference, { icon: string; labelKey: MessageKey }> = {
-  light: { icon: '☀', labelKey: 'theme.light' },
-  dark: { icon: '🌙', labelKey: 'theme.dark' },
-  system: { icon: '🖥', labelKey: 'theme.system' }
-}
 
 interface ThemeState {
   preference: ThemePreference
@@ -22,7 +13,6 @@ interface ThemeState {
   initialized: boolean
   initialize: () => Promise<void>
   setPreference: (preference: ThemePreference) => void
-  cyclePreference: () => void
 }
 
 const darkQuery =
@@ -64,12 +54,6 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     applyResolvedTheme(resolved)
     set({ preference, resolved })
     void window.api.settings.set(THEME_PREFERENCE_KEY, preference).catch(() => undefined)
-  },
-
-  cyclePreference: () => {
-    const current = get().preference
-    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length]
-    get().setPreference(next)
   }
 }))
 
