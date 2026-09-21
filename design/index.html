@@ -1,0 +1,1385 @@
+<!doctype html>
+<html lang="en" data-theme="mocha">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mocha Synapse — Design Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute">
+      <symbol id="i-synapse" viewBox="0 0 24 24">
+        <circle cx="5.5" cy="5.5" r="2" />
+        <circle cx="18.5" cy="5.5" r="2" />
+        <circle cx="12" cy="18.5" r="2" />
+        <path d="M7.5 5.5h9M7.1 7.3l3.6 8.9M16.9 7.3l-3.6 8.9" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="M15.8 15.8L20.5 20.5" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13" /></symbol>
+      <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6" /></symbol>
+      <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" /></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path d="M20 14.6A8.6 8.6 0 0 1 9.4 4 8.6 8.6 0 1 0 20 14.6z" />
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4.2" />
+        <path
+          d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.4 5.4l1.7 1.7M16.9 16.9l1.7 1.7M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7"
+        />
+      </symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24">
+        <path d="M4 7.5h9M18.5 7.5H20M4 16.5h3.5M13 16.5h7" />
+        <circle cx="15.8" cy="7.5" r="2" />
+        <circle cx="10.3" cy="16.5" r="2" />
+      </symbol>
+      <symbol id="i-more" viewBox="0 0 24 24">
+        <circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+        <circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="i-grip" viewBox="0 0 24 24">
+        <circle cx="9.5" cy="6" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="14.5" cy="6" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="9.5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="14.5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="9.5" cy="18" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="14.5" cy="18" r="1.5" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+      <symbol id="i-enter" viewBox="0 0 24 24">
+        <path d="M18.5 5.5v6a3 3 0 0 1-3 3H6.5M9.5 11.5l-3 3 3 3" />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4.5 7h15M10 7V4.8h4V7M7.2 7l.9 13.2h7.8L16.8 7" />
+      </symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24">
+        <rect x="9" y="9" width="11" height="11" rx="2.5" />
+        <path d="M15 5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15" />
+      </symbol>
+      <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19.5v-15M6 10.5l6-6 6 6" /></symbol>
+      <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 4.5v15M6 13.5l6 6 6-6" /></symbol>
+      <symbol id="i-swap" viewBox="0 0 24 24">
+        <path d="M4.5 8.5h15M16 5l3.5 3.5L16 12M19.5 15.5h-15M8 12l-3.5 3.5L8 19" />
+      </symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24">
+        <path d="M7 3.5h6.5L18.5 8.5V20.5H7z" />
+        <path d="M13.5 3.5v5h5" />
+      </symbol>
+    </svg>
+
+    <header class="topbar">
+      <a class="brand" href="#top">
+        <span class="brand__mark"><svg class="i" aria-hidden="true"><use href="#i-synapse" /></svg></span>
+        <span>Mocha Synapse</span>
+        <span class="brand__tag">preview 0.1</span>
+      </a>
+      <nav class="topnav" aria-label="Sections">
+        <a href="#colors">Colors</a>
+        <a href="#typography">Typography</a>
+        <a href="#elevation">Elevation</a>
+        <a href="#components">Components</a>
+        <a href="#context">In context</a>
+        <a href="#spacing">Spacing</a>
+        <a href="#radius">Radius</a>
+        <a href="#rules">Rules</a>
+      </nav>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-set-theme="mocha" aria-pressed="true">
+          <svg class="i i--sm" aria-hidden="true"><use href="#i-moon" /></svg>Mocha
+        </button>
+        <button type="button" data-set-theme="latte" aria-pressed="false">
+          <svg class="i i--sm" aria-hidden="true"><use href="#i-sun" /></svg>Latte
+        </button>
+      </div>
+    </header>
+
+    <main class="doc" id="top">
+      <section class="hero">
+        <div class="hero__grid">
+          <div>
+            <p class="overline">Design system preview · v0.1</p>
+            <h1><span class="grad">Mocha</span> Synapse</h1>
+            <p class="hero__desc">
+              A cool, pastel design system for Synapse, built on Catppuccin Mocha and Latte. Violet
+              carries the brand, pastels carry meaning, and layered surfaces carry depth. Fresh at
+              hour one, still kind to the eyes at hour eight.
+            </p>
+            <div class="hero__actions">
+              <a class="btn btn--primary" href="#colors">Explore the tokens</a>
+              <a class="btn btn--secondary" href="#components">Components</a>
+            </div>
+            <div class="hero__chips">
+              <span class="chip" style="--c: var(--mauve)">Catppuccin Mocha</span>
+              <span class="chip" style="--c: var(--blue)">Catppuccin Latte</span>
+              <span class="chip" style="--c: var(--green)">WCAG AA</span>
+              <span class="chip" style="--c: var(--sapphire)">4px grid</span>
+              <span class="chip" style="--c: var(--pink)">Inter + JetBrains Mono</span>
+            </div>
+          </div>
+          <div class="layerstack" aria-label="Surface layers">
+            <div class="layerbar" style="background: var(--surface-raised)">
+              <span class="layerbar__name"
+                ><span class="layerbar__dot" style="background: var(--surface-raised)"></span
+                >Floating</span
+              >
+              <span class="layerbar__token">--surface-raised</span>
+            </div>
+            <div class="layerbar" style="background: var(--surface)">
+              <span class="layerbar__name"
+                ><span class="layerbar__dot" style="background: var(--surface)"></span>Raised</span
+              >
+              <span class="layerbar__token">--surface</span>
+            </div>
+            <div class="layerbar" style="background: var(--canvas)">
+              <span class="layerbar__name"
+                ><span class="layerbar__dot" style="background: var(--canvas)"></span>Canvas</span
+              >
+              <span class="layerbar__token">--canvas</span>
+            </div>
+            <div class="layerbar" style="background: var(--panel)">
+              <span class="layerbar__name"
+                ><span class="layerbar__dot" style="background: var(--panel)"></span>Panel</span
+              >
+              <span class="layerbar__token">--panel</span>
+            </div>
+            <div class="layerbar" style="background: var(--code-bg)">
+              <span class="layerbar__name"
+                ><span class="layerbar__dot" style="background: var(--code-bg)"></span>Deep</span
+              >
+              <span class="layerbar__token">--code-bg</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="colors">
+        <header class="sec-head">
+          <p class="overline">01 · Foundations</p>
+          <h2 class="sec-title">Colors</h2>
+          <p class="sec-desc">
+            Blue-gray surfaces keep the interface quiet; pastel accents interrupt only when they
+            mean something. Violet is the single primary. Every other hue owns one semantic job.
+          </p>
+        </header>
+
+        <h3 class="subhead">Surfaces <span class="subhead__note">one set of tokens, two flavors</span></h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Canvas</span>
+              <span class="swatch__hex">--canvas</span>
+              <span class="swatch__role">Document, app background</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--panel)"></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Panel</span>
+              <span class="swatch__hex">--panel</span>
+              <span class="swatch__role">Sidebar, header, chrome</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--surface)"></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Surface</span>
+              <span class="swatch__hex">--surface</span>
+              <span class="swatch__role">Cards, inputs, menus</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--surface-raised)"></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Surface raised</span>
+              <span class="swatch__hex">--surface-raised</span>
+              <span class="swatch__role">Tooltips, nested popovers</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--code-bg)"></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Code</span>
+              <span class="swatch__hex">--code-bg</span>
+              <span class="swatch__role">Code blocks, wells</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Text <span class="subhead__note">contrast measured on canvas</span></h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"><span style="color: var(--ink)">Aa</span></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Ink</span>
+              <span class="swatch__hex">--ink</span>
+              <span class="swatch__role">Headings, body · 11.3:1</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"><span style="color: var(--ink-soft)">Aa</span></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Ink soft</span>
+              <span class="swatch__hex">--ink-soft</span>
+              <span class="swatch__role">Secondary text · 9.3:1</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"><span style="color: var(--muted)">Aa</span></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Muted</span>
+              <span class="swatch__hex">--muted</span>
+              <span class="swatch__role">Descriptions, metadata · 7.4:1</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"><span style="color: var(--faint)">Aa</span></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Faint</span>
+              <span class="swatch__hex">--faint</span>
+              <span class="swatch__role">Placeholders, hints · 4.4:1</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: var(--canvas)"><span style="color: var(--faintest)">Aa</span></div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Faintest</span>
+              <span class="swatch__hex">--faintest</span>
+              <span class="swatch__role">Disabled, non-text · 3.4:1</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Accents <span class="subhead__note">each hue owns one job, no decoration</span></h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--mauve) 14%, transparent); color: var(--mauve)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Mauve</span>
+              <span class="swatch__hex">--accent</span>
+              <span class="swatch__role">Primary: active, selected, focus</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--lavender) 14%, transparent); color: var(--lavender)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Lavender</span>
+              <span class="swatch__hex">--accent-hover</span>
+              <span class="swatch__role">Accent hover, soft glow</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Blue</span>
+              <span class="swatch__hex">--info</span>
+              <span class="swatch__role">Info, links</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--sapphire) 14%, transparent); color: var(--sapphire)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Sapphire</span>
+              <span class="swatch__hex">--sapphire</span>
+              <span class="swatch__role">Drag target, secondary info</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--sky) 14%, transparent); color: var(--sky)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Sky</span>
+              <span class="swatch__hex">--sky</span>
+              <span class="swatch__role">Search match, highlights</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--teal) 14%, transparent); color: var(--teal)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Teal</span>
+              <span class="swatch__hex">--teal</span>
+              <span class="swatch__role">Syntax, tags</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Green</span>
+              <span class="swatch__hex">--success</span>
+              <span class="swatch__role">Success, done</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--yellow) 14%, transparent); color: var(--yellow)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Yellow</span>
+              <span class="swatch__hex">--warning</span>
+              <span class="swatch__role">Warning, in progress</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--peach) 14%, transparent); color: var(--peach)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Peach</span>
+              <span class="swatch__hex">--peach</span>
+              <span class="swatch__role">Attention, streaks</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Red</span>
+              <span class="swatch__hex">--error</span>
+              <span class="swatch__role">Error, destructive</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--maroon) 14%, transparent); color: var(--maroon)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Maroon</span>
+              <span class="swatch__hex">--maroon</span>
+              <span class="swatch__role">Error alt, mentions</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--pink) 14%, transparent); color: var(--pink)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Pink</span>
+              <span class="swatch__hex">--pink</span>
+              <span class="swatch__role">Tags, callouts</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--flamingo) 14%, transparent); color: var(--flamingo)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Flamingo</span>
+              <span class="swatch__hex">--flamingo</span>
+              <span class="swatch__role">Soft labels</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="swatch__block" style="background: color-mix(in srgb, var(--rosewater) 14%, transparent); color: var(--rosewater)">Aa</div>
+            <div class="swatch__meta">
+              <span class="swatch__name">Rosewater</span>
+              <span class="swatch__hex">--rosewater</span>
+              <span class="swatch__role">Warm neutral, rarely used</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Both flavors <span class="subhead__note">same markup, same tokens</span></h3>
+        <div class="duo">
+          <div class="mini t-mocha">
+            <p class="mini__label">Mocha · dark</p>
+            <div class="mini__card">
+              <div class="mini__row mini__row--active">
+                <span class="monogram" style="--c: var(--mauve)">DS</span>
+                <span style="flex: 1">Design System</span>
+                <span class="kbd">⌘K</span>
+              </div>
+              <div class="mini__row" style="color: var(--muted)">
+                <span class="monogram" style="--c: var(--blue)">TK</span>
+                <span style="flex: 1">Tokens</span>
+              </div>
+              <div class="mini__row">
+                <span class="chip" style="--c: var(--green)">Done</span>
+                <span class="muted small" style="margin-left: auto">12 blocks</span>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn btn--primary btn--compact" type="button">New page</button>
+            </div>
+          </div>
+          <div class="mini t-latte">
+            <p class="mini__label">Latte · light</p>
+            <div class="mini__card">
+              <div class="mini__row mini__row--active">
+                <span class="monogram" style="--c: var(--mauve)">DS</span>
+                <span style="flex: 1">Design System</span>
+                <span class="kbd">⌘K</span>
+              </div>
+              <div class="mini__row" style="color: var(--muted)">
+                <span class="monogram" style="--c: var(--blue)">TK</span>
+                <span style="flex: 1">Tokens</span>
+              </div>
+              <div class="mini__row">
+                <span class="chip" style="--c: var(--green)">Done</span>
+                <span class="muted small" style="margin-left: auto">12 blocks</span>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn btn--primary btn--compact" type="button">New page</button>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Token map <span class="subhead__note">drop-in for main.css</span></h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Mocha</th>
+              <th>Latte</th>
+              <th>Used for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">--canvas</td>
+              <td><span class="cell-color"><span class="dot" style="background: #1e1e2e"></span>#1e1e2e</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #eff1f5"></span>#eff1f5</span></td>
+              <td>Document, app background</td>
+            </tr>
+            <tr>
+              <td class="mono">--panel</td>
+              <td><span class="cell-color"><span class="dot" style="background: #181825"></span>#181825</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #e6e9ef"></span>#e6e9ef</span></td>
+              <td>Sidebar, header, chrome</td>
+            </tr>
+            <tr>
+              <td class="mono">--surface</td>
+              <td><span class="cell-color"><span class="dot" style="background: #313244"></span>#313244</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #ffffff"></span>#ffffff</span></td>
+              <td>Cards, inputs, menus</td>
+            </tr>
+            <tr>
+              <td class="mono">--surface-raised</td>
+              <td><span class="cell-color"><span class="dot" style="background: #45475a"></span>#45475a</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #ffffff"></span>#ffffff</span></td>
+              <td>Tooltips, nested popovers</td>
+            </tr>
+            <tr>
+              <td class="mono">--code-bg</td>
+              <td><span class="cell-color"><span class="dot" style="background: #11111b"></span>#11111b</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #dce0e8"></span>#dce0e8</span></td>
+              <td>Code blocks, wells</td>
+            </tr>
+            <tr>
+              <td class="mono">--border</td>
+              <td><span class="cell-color"><span class="dot" style="background: #313244"></span>10% ink</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #ccd0da"></span>14% ink</span></td>
+              <td>Hairlines, input edges</td>
+            </tr>
+            <tr>
+              <td class="mono">--ink</td>
+              <td><span class="cell-color"><span class="dot" style="background: #cdd6f4"></span>#cdd6f4</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #4c4f69"></span>#4c4f69</span></td>
+              <td>Primary text</td>
+            </tr>
+            <tr>
+              <td class="mono">--muted</td>
+              <td><span class="cell-color"><span class="dot" style="background: #a6adc8"></span>#a6adc8</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #6c6f85"></span>#6c6f85</span></td>
+              <td>Descriptions, metadata</td>
+            </tr>
+            <tr>
+              <td class="mono">--faint</td>
+              <td><span class="cell-color"><span class="dot" style="background: #7f849c"></span>#7f849c</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #8c8fa1"></span>#8c8fa1</span></td>
+              <td>Placeholders, hints</td>
+            </tr>
+            <tr>
+              <td class="mono">--accent</td>
+              <td><span class="cell-color"><span class="dot" style="background: #cba6f7"></span>#cba6f7</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #8839ef"></span>#8839ef</span></td>
+              <td>Primary actions, selection</td>
+            </tr>
+            <tr>
+              <td class="mono">--accent-hover</td>
+              <td><span class="cell-color"><span class="dot" style="background: #b4befe"></span>#b4befe</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #752ad3"></span>mauve −14%</span></td>
+              <td>Primary hover</td>
+            </tr>
+            <tr>
+              <td class="mono">--selected</td>
+              <td><span class="cell-color"><span class="dot" style="background: #3f3459"></span>12% accent</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #ece0fd"></span>8% accent</span></td>
+              <td>Selected rows, nav items</td>
+            </tr>
+            <tr>
+              <td class="mono">--success</td>
+              <td><span class="cell-color"><span class="dot" style="background: #a6e3a1"></span>#a6e3a1</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #40a02b"></span>#40a02b</span></td>
+              <td>Done, passing checks</td>
+            </tr>
+            <tr>
+              <td class="mono">--warning</td>
+              <td><span class="cell-color"><span class="dot" style="background: #f9e2af"></span>#f9e2af</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #df8e1d"></span>#df8e1d</span></td>
+              <td>In progress, attention</td>
+            </tr>
+            <tr>
+              <td class="mono">--error</td>
+              <td><span class="cell-color"><span class="dot" style="background: #f38ba8"></span>#f38ba8</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #d20f39"></span>#d20f39</span></td>
+              <td>Errors, destructive</td>
+            </tr>
+            <tr>
+              <td class="mono">--info</td>
+              <td><span class="cell-color"><span class="dot" style="background: #89b4fa"></span>#89b4fa</span></td>
+              <td><span class="cell-color"><span class="dot" style="background: #1e66f5"></span>#1e66f5</span></td>
+              <td>Info, links</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 class="subhead">Contrast <span class="subhead__note">measured pairs, not guesses</span></h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Ratio</th>
+              <th>Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Mocha · ink on canvas</td>
+              <td class="mono">11.3:1</td>
+              <td><span class="badge badge--ok">AAA</span></td>
+            </tr>
+            <tr>
+              <td>Mocha · muted on canvas</td>
+              <td class="mono">7.4:1</td>
+              <td><span class="badge badge--ok">AAA</span></td>
+            </tr>
+            <tr>
+              <td>Mocha · canvas on accent (primary button)</td>
+              <td class="mono">8.1:1</td>
+              <td><span class="badge badge--ok">AAA</span></td>
+            </tr>
+            <tr>
+              <td>Mocha · faintest on canvas</td>
+              <td class="mono">3.4:1</td>
+              <td><span class="badge badge--dec">Non-text</span></td>
+            </tr>
+            <tr>
+              <td>Latte · ink on canvas</td>
+              <td class="mono">7.0:1</td>
+              <td><span class="badge badge--ok">AAA</span></td>
+            </tr>
+            <tr>
+              <td>Latte · subtext on canvas</td>
+              <td class="mono">5.5:1</td>
+              <td><span class="badge badge--ok">AA</span></td>
+            </tr>
+            <tr>
+              <td>Latte · white on accent (primary button)</td>
+              <td class="mono">5.4:1</td>
+              <td><span class="badge badge--ok">AA</span></td>
+            </tr>
+            <tr>
+              <td>Latte · faintest on canvas</td>
+              <td class="mono">2.3:1</td>
+              <td><span class="badge badge--dec">Non-text</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="typography">
+        <header class="sec-head">
+          <p class="overline">02 · Foundations</p>
+          <h2 class="sec-title">Typography</h2>
+          <p class="sec-desc">
+            Inter runs the whole interface at 400, 500, and 600. JetBrains Mono marks anything the
+            machine owns: code, shortcuts, counters. Writing sits at 16px; chrome stays at 13px.
+          </p>
+        </header>
+
+        <div class="specs">
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Display</span>
+              <span class="spec__val">40 · 600 · -0.03em</span>
+            </div>
+            <div class="spec__sample" style="font-size: 40px; font-weight: 600; letter-spacing: -0.03em">Fresh, focused, fast</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Page title</span>
+              <span class="spec__val">32 · 600 · -0.02em</span>
+            </div>
+            <div class="spec__sample" style="font-size: 32px; font-weight: 600; letter-spacing: -0.02em">Mocha Synapse</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Heading 2</span>
+              <span class="spec__val">24 · 600 · -0.02em</span>
+            </div>
+            <div class="spec__sample" style="font-size: 24px; font-weight: 600; letter-spacing: -0.02em">Build in public</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Heading 3</span>
+              <span class="spec__val">20 · 600</span>
+            </div>
+            <div class="spec__sample" style="font-size: 20px; font-weight: 600">Keyboard-first editing</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Heading 4</span>
+              <span class="spec__val">16 · 600</span>
+            </div>
+            <div class="spec__sample" style="font-size: 16px; font-weight: 600">Autosave</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Body</span>
+              <span class="spec__val">16 · 400 · 1.6</span>
+            </div>
+            <div class="spec__sample" style="font-size: 16px; line-height: 1.6">
+              The canvas is quiet by default. Text sits at 16px for long writing sessions, with soft
+              blue-gray ink on deep surfaces.
+              <span class="muted">Secondary sentences drop to muted and never compete.</span>
+            </div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">UI</span>
+              <span class="spec__val">13 · 500</span>
+            </div>
+            <div class="spec__sample" style="font-size: 13px; font-weight: 500">Sidebar items, buttons, menus, breadcrumbs</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Metadata</span>
+              <span class="spec__val">12 · 500</span>
+            </div>
+            <div class="spec__sample" style="font-size: 12px; font-weight: 500; color: var(--muted)">4 blocks · edited 2m ago</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Overline</span>
+              <span class="spec__val">11 · 600 · +0.08em</span>
+            </div>
+            <div class="spec__sample" style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Tokens · Components · Search</div>
+          </div>
+          <div class="spec">
+            <div class="spec__meta">
+              <span class="spec__name">Code</span>
+              <span class="spec__val">13 · 400 · mono</span>
+            </div>
+            <div class="spec__sample mono" style="font-size: 13px">--accent: #cba6f7;</div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Families</h3>
+        <div class="fontcards">
+          <div class="fontcard">
+            <p class="fontcard__name">Inter</p>
+            <p class="fontcard__stack">ui · display · body · weights 400 / 500 / 600</p>
+            <p class="fontcard__specimen">Aa Bb Cc 0123</p>
+            <div class="weights">
+              <span class="weight" style="font-weight: 400">Aa<span>400</span></span>
+              <span class="weight" style="font-weight: 500">Aa<span>500</span></span>
+              <span class="weight" style="font-weight: 600">Aa<span>600</span></span>
+            </div>
+          </div>
+          <div class="fontcard">
+            <p class="fontcard__name">JetBrains Mono</p>
+            <p class="fontcard__stack">code · shortcuts · identifiers · weights 400 / 500 / 600</p>
+            <p class="fontcard__specimen mono" style="font-size: 26px">const a = 1</p>
+            <div class="weights mono">
+              <span class="weight" style="font-weight: 400">Aa<span>400</span></span>
+              <span class="weight" style="font-weight: 500">Aa<span>500</span></span>
+              <span class="weight" style="font-weight: 600">Aa<span>600</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="elevation">
+        <header class="sec-head">
+          <p class="overline">03 · Foundations</p>
+          <h2 class="sec-title">Elevation</h2>
+          <p class="sec-desc">
+            Depth comes from luminance, not shadows. Five surfaces carry the whole hierarchy; only
+            modals get a shadow, and only focus gets a violet glow.
+          </p>
+        </header>
+
+        <div class="grid-2">
+          <div class="layer-group">
+            <div class="layer-row" style="background: var(--surface-raised)">
+              <div class="layer-row__meta">
+                <span class="layer-row__name">Floating</span>
+                <span class="layer-row__use">Tooltips, nested popovers</span>
+              </div>
+              <span class="layer-row__token">--surface-raised</span>
+            </div>
+            <div class="layer-row" style="background: var(--surface)">
+              <div class="layer-row__meta">
+                <span class="layer-row__name">Raised</span>
+                <span class="layer-row__use">Cards, inputs, menus, palette</span>
+              </div>
+              <span class="layer-row__token">--surface</span>
+            </div>
+            <div class="layer-row" style="background: var(--canvas)">
+              <div class="layer-row__meta">
+                <span class="layer-row__name">Canvas</span>
+                <span class="layer-row__use">Document, app background</span>
+              </div>
+              <span class="layer-row__token">--canvas</span>
+            </div>
+            <div class="layer-row" style="background: var(--panel)">
+              <div class="layer-row__meta">
+                <span class="layer-row__name">Panel</span>
+                <span class="layer-row__use">Sidebar, header, chrome</span>
+              </div>
+              <span class="layer-row__token">--panel</span>
+            </div>
+            <div class="layer-row" style="background: var(--code-bg)">
+              <div class="layer-row__meta">
+                <span class="layer-row__name">Deep</span>
+                <span class="layer-row__use">Code blocks, wells</span>
+              </div>
+              <span class="layer-row__token">--code-bg</span>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="glow-card">
+              <div class="glow-demo glow-demo--ring">
+                <input class="input input--focus" style="max-width: 240px" value="Focused input" />
+              </div>
+              <span class="panel__label">Focus ring</span>
+              <span class="panel__hint">1px accent border plus a 3px 30% ring.</span>
+            </div>
+            <div class="glow-card">
+              <div class="glow-demo">
+                <span class="row row--active" style="width: 220px">Selected row<span class="row__meta">12% accent</span></span>
+              </div>
+              <span class="panel__label">Selection</span>
+              <span class="panel__hint">Violet wash with a 2px left border, no shadow.</span>
+            </div>
+            <div class="glow-card">
+              <div class="glow-demo">
+                <span class="glow-demo__pill">Primary</span>
+              </div>
+              <span class="panel__label">Accent glow</span>
+              <span class="panel__hint">0 0 24px of 15% accent, only on primaries.</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="subhead">Modal depth <span class="subhead__note">shadow plus 4px backdrop blur</span></h3>
+        <div class="modal-demo">
+          <div class="panel panel--surface" style="max-width: 380px; box-shadow: var(--shadow-modal)">
+            <p class="panel__label">Delete this page?</p>
+            <p class="panel__hint">Its subpages and 12 blocks will be removed. This cannot be undone.</p>
+            <div style="display: flex; justify-content: flex-end; gap: 8px">
+              <button class="btn btn--ghost btn--compact" type="button">Cancel</button>
+              <button class="btn btn--danger btn--compact" type="button">Delete</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="components">
+        <header class="sec-head">
+          <p class="overline">04 · Pieces</p>
+          <h2 class="sec-title">Components</h2>
+          <p class="sec-desc">
+            Compact controls, generous writing space. Every control is sized for the mouse but built
+            for the keyboard, and every interaction answers within 150ms.
+          </p>
+        </header>
+
+        <div class="stack">
+          <div class="grid-2">
+            <div class="panel">
+              <p class="panel__label">Buttons</p>
+              <p class="panel__hint">32px default, 28px compact. One violet primary per view; ghost for everything else.</p>
+              <div class="stack stack--sm">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <button class="btn btn--primary" type="button">New page</button>
+                  <button class="btn btn--secondary" type="button">Share</button>
+                  <button class="btn btn--ghost" type="button">Cancel</button>
+                  <button class="btn btn--danger" type="button">Delete</button>
+                  <button class="btn btn--primary" type="button" disabled>Disabled</button>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                  <button class="btn btn--primary btn--compact" type="button">Compact</button>
+                  <button class="btn btn--secondary btn--compact" type="button">Duplicate</button>
+                  <button class="btn btn--ghost btn--icon btn--compact" type="button" aria-label="More">
+                    <svg class="i i--sm" aria-hidden="true"><use href="#i-more" /></svg>
+                  </button>
+                  <button class="btn btn--ghost btn--icon" type="button" aria-label="Settings">
+                    <svg class="i" aria-hidden="true"><use href="#i-settings" /></svg>
+                  </button>
+                  <button class="btn btn--secondary btn--compact" type="button">Search <span class="kbd">⌘K</span></button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <p class="panel__label">Inputs</p>
+              <p class="panel__hint">32px tall, 28px in toolbars. Focus is a violet border plus a soft ring.</p>
+              <div class="stack stack--sm">
+                <div class="field">
+                  <span class="field__label">Page title</span>
+                  <input class="input" value="Mocha Synapse" />
+                </div>
+                <div class="field">
+                  <span class="field__label">Search · focused</span>
+                  <span class="field__wrap">
+                    <svg class="i i--sm" aria-hidden="true"><use href="#i-search" /></svg>
+                    <input class="input input--focus" value="design tokens" />
+                  </span>
+                </div>
+                <div class="field">
+                  <span class="field__label">Compact</span>
+                  <input class="input input--compact" placeholder="Filter blocks…" />
+                </div>
+                <div class="field">
+                  <span class="field__label">Disabled</span>
+                  <input class="input" placeholder="Read only" disabled />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <p class="panel__label">Chips</p>
+              <p class="panel__hint">20px tall, 4px radius. Tinted 16% of their own hue, never solid.</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+                <span class="chip" style="--c: var(--green)">Done</span>
+                <span class="chip" style="--c: var(--yellow)">In progress</span>
+                <span class="chip" style="--c: var(--red)">Blocked</span>
+                <span class="chip" style="--c: var(--blue)">Page</span>
+                <span class="chip" style="--c: var(--pink)">Design</span>
+                <span class="chip chip--outline">Draft</span>
+              </div>
+              <div class="spacer"></div>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 13px">
+                Shortcuts
+                <span class="kbd">⌘K</span>
+                <span class="kbd">⌘D</span>
+                <span class="kbd">⇧⏎</span>
+                <span class="kbd">Tab</span>
+                <span class="kbd">Esc</span>
+              </div>
+            </div>
+
+            <div class="panel">
+              <p class="panel__label">Tooltips</p>
+              <p class="panel__hint">Instant on hover, shortcut right-aligned in mono. 0ms delay, 100ms fade.</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 30px; padding-top: 44px">
+                <span class="tooltip">
+                  <button class="btn btn--ghost btn--icon" type="button" aria-label="Duplicate">
+                    <svg class="i" aria-hidden="true"><use href="#i-copy" /></svg>
+                  </button>
+                  <span class="tooltip__bubble">Duplicate <span class="kbd">⌘D</span></span>
+                </span>
+                <span class="tooltip">
+                  <button class="btn btn--ghost btn--icon" type="button" aria-label="Delete">
+                    <svg class="i" aria-hidden="true"><use href="#i-trash" /></svg>
+                  </button>
+                  <span class="tooltip__bubble">Delete <span class="kbd">⌫</span></span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel__label">Rows & selection</p>
+            <p class="panel__hint">24px in dense trees, 36px in lists. Seamless: no dividers between rows, only surfaces.</p>
+            <div class="stack stack--sm" style="max-width: 560px">
+              <div class="row">
+                <span class="monogram" style="--c: var(--mauve)">DS</span>
+                <span class="row__title">Design System</span>
+                <span class="row__meta"><span class="row__id">12 blocks</span></span>
+              </div>
+              <div class="row row--hover">
+                <span class="monogram" style="--c: var(--blue)">TK</span>
+                <span class="row__title">Tokens</span>
+                <span class="row__meta"><span class="row__id">hover</span></span>
+              </div>
+              <div class="row row--active">
+                <span class="monogram" style="--c: var(--green)">RM</span>
+                <span class="row__title">Q4 Roadmap</span>
+                <span class="row__meta"><span class="row__id">selected</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel__label">Todo shape — pick one</p>
+            <p class="panel__hint">
+              Synapse ships square boxes today. Circles read lighter and match the pastel status
+              language. Same five states, same behavior; only the geometry changes.
+            </p>
+            <div class="cbxs">
+              <div class="cbx-group">
+                <p class="cbx-group__label">Square · current</p>
+                <div class="cbx-item">
+                  <span class="cbx cbx--backlog"></span><span class="cbx-item__text">Backlog — dotted outline</span>
+                </div>
+                <div class="cbx-item">
+                  <span class="cbx cbx--todo"></span><span class="cbx-item__text">Todo — solid outline</span>
+                </div>
+                <div class="cbx-item">
+                  <span class="cbx cbx--progress"></span><span class="cbx-item__text">In progress — half filled</span>
+                </div>
+                <div class="cbx-item cbx-item--done">
+                  <span class="cbx cbx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
+                  <span class="cbx-item__text">Done — filled green</span>
+                </div>
+                <div class="cbx-item cbx-item--cancel">
+                  <span class="cbx cbx--cancel"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-x" /></svg></span>
+                  <span class="cbx-item__text">Cancelled — filled muted</span>
+                </div>
+              </div>
+              <div class="cbx-group">
+                <p class="cbx-group__label">Circle · proposed</p>
+                <div class="cbx-item">
+                  <span class="dotx dotx--backlog"></span><span class="cbx-item__text">Backlog — dotted outline</span>
+                </div>
+                <div class="cbx-item">
+                  <span class="dotx dotx--todo"></span><span class="cbx-item__text">Todo — solid outline</span>
+                </div>
+                <div class="cbx-item">
+                  <span class="dotx dotx--progress"></span><span class="cbx-item__text">In progress — half filled</span>
+                </div>
+                <div class="cbx-item cbx-item--done">
+                  <span class="dotx dotx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
+                  <span class="cbx-item__text">Done — filled green</span>
+                </div>
+                <div class="cbx-item cbx-item--cancel">
+                  <span class="dotx dotx--cancel"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-x" /></svg></span>
+                  <span class="cbx-item__text">Cancelled — filled muted</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="panel">
+              <p class="panel__label">Slash menu</p>
+              <p class="panel__hint">Opens at the caret after /. Filter as you type, ↑↓ to move, Enter to run.</p>
+              <div class="menu">
+                <div class="menu__item">
+                  <span class="menu__icon">T</span>
+                  <span class="menu__body"><span class="menu__label">Text</span><span class="menu__desc">Plain paragraph</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon">H1</span>
+                  <span class="menu__body"><span class="menu__label">Heading 1</span><span class="menu__desc">Big section title</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon">H2</span>
+                  <span class="menu__body"><span class="menu__label">Heading 2</span><span class="menu__desc">Medium section title</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon"><span style="width: 5px; height: 5px; border-radius: 9999px; background: currentColor"></span></span>
+                  <span class="menu__body"><span class="menu__label">Bullet list</span><span class="menu__desc">Unordered list</span></span>
+                </div>
+                <div class="menu__item menu__item--active">
+                  <span class="menu__icon"><span class="dotx dotx--todo" style="width: 13px; height: 13px"></span></span>
+                  <span class="menu__body"><span class="menu__label">To-do list</span><span class="menu__desc">Track tasks with circles</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon">”</span>
+                  <span class="menu__body"><span class="menu__label">Quote</span><span class="menu__desc">Capture a citation</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon" style="font-size: 10px">&lt;/&gt;</span>
+                  <span class="menu__body"><span class="menu__label">Code</span><span class="menu__desc">Monospaced block</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon">—</span>
+                  <span class="menu__body"><span class="menu__label">Divider</span><span class="menu__desc">Visual separator</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <p class="panel__label">Block menu</p>
+              <p class="panel__hint">Opens from the handle on hover or ⌘/. Shortcuts stay visible.</p>
+              <div class="menu">
+                <div class="menu__item">
+                  <span class="menu__icon"><svg class="i i--sm" aria-hidden="true"><use href="#i-swap" /></svg></span>
+                  <span class="menu__body"><span class="menu__label">Turn into</span><span class="menu__desc">Text, heading, list, quote…</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon"><svg class="i i--sm" aria-hidden="true"><use href="#i-copy" /></svg></span>
+                  <span class="menu__body"><span class="menu__label">Duplicate</span></span>
+                  <span class="menu__kbd"><span class="kbd">⌘D</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon"><svg class="i i--sm" aria-hidden="true"><use href="#i-arrow-up" /></svg></span>
+                  <span class="menu__body"><span class="menu__label">Move up</span></span>
+                  <span class="menu__kbd"><span class="kbd">⌘⇧↑</span></span>
+                </div>
+                <div class="menu__item">
+                  <span class="menu__icon"><svg class="i i--sm" aria-hidden="true"><use href="#i-arrow-down" /></svg></span>
+                  <span class="menu__body"><span class="menu__label">Move down</span></span>
+                  <span class="menu__kbd"><span class="kbd">⌘⇧↓</span></span>
+                </div>
+                <div class="menu__item" style="color: var(--error)">
+                  <span class="menu__icon" style="color: var(--error)"><svg class="i i--sm" aria-hidden="true"><use href="#i-trash" /></svg></span>
+                  <span class="menu__body"><span class="menu__label">Delete</span></span>
+                  <span class="menu__kbd"><span class="kbd">⌫</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel__label">Command palette · ⌘K</p>
+            <p class="panel__hint">
+              The primary way to move. 560px, centered, 12px radius, modal shadow, 4px backdrop blur.
+            </p>
+            <div class="modal-demo">
+              <div class="palette">
+                <div class="palette__input">
+                  <svg class="i i--sm" aria-hidden="true"><use href="#i-search" /></svg>
+                  <span>design</span><span class="palette__caret"></span>
+                  <span class="kbd" style="margin-left: auto">Esc</span>
+                </div>
+                <div class="palette__body">
+                  <p class="palette__group-label">Pages</p>
+                  <div class="palette__row palette__row--active">
+                    <span class="monogram" style="--c: var(--mauve)">DS</span>
+                    <span class="palette__row-body">
+                      <span><mark class="mark">Design</mark> System</span>
+                      <span class="palette__row-sub">12 blocks · edited 2m ago</span>
+                    </span>
+                    <span class="kbd">↵</span>
+                  </div>
+                  <div class="palette__row">
+                    <span class="monogram" style="--c: var(--blue)">TK</span>
+                    <span class="palette__row-body">
+                      <span><mark class="mark">Design</mark> tokens</span>
+                      <span class="palette__row-sub">Design System</span>
+                    </span>
+                  </div>
+                  <p class="palette__group-label">Blocks</p>
+                  <div class="palette__row">
+                    <span class="monogram" style="--c: var(--pink)">¶</span>
+                    <span class="palette__row-body">
+                      <span><mark class="mark">Design</mark> is a verb, not decoration</span>
+                      <span class="palette__row-sub">Design System · Foundations</span>
+                    </span>
+                  </div>
+                </div>
+                <div class="palette__foot">
+                  <span><span class="kbd">↑</span><span class="kbd">↓</span> Navigate</span>
+                  <span><span class="kbd">↵</span> Open</span>
+                  <span><span class="kbd">esc</span> Close</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="context">
+        <header class="sec-head">
+          <p class="overline">05 · Together</p>
+          <h2 class="sec-title">In context</h2>
+          <p class="sec-desc">
+            Sidebar, breadcrumbs, blocks, and the handle, wearing the tokens at once. Switch flavors
+            above: nothing in this frame is hardcoded.
+          </p>
+        </header>
+
+        <div class="app">
+          <aside class="sidebar">
+            <div style="padding: 10px 10px 6px">
+              <div class="ws">
+                <span class="monogram" style="--c: var(--mauve); width: 22px; height: 22px; border-radius: 6px">SY</span>
+                <span class="ws__name">Synapse</span>
+                <svg class="i i--sm ws__chev" aria-hidden="true"><use href="#i-chev-down" /></svg>
+              </div>
+              <div class="spacer"></div>
+              <div class="sidebar__search">
+                <svg class="i i--sm" aria-hidden="true"><use href="#i-search" /></svg>
+                <span>Search</span>
+                <span class="kbd">⌘K</span>
+              </div>
+            </div>
+            <div class="sidebar__body">
+              <p class="sidebar__label">Pages</p>
+              <div class="page-item page-item--active">
+                <svg class="i i--sm page-item__caret page-item__caret--open" aria-hidden="true"><use href="#i-chev-right" /></svg>
+                <span class="monogram" style="--c: var(--mauve)">DS</span>
+                <span class="page-item__label">Design System</span>
+                <span class="page-item__count">4</span>
+              </div>
+              <div class="page-item page-item--child">
+                <span class="monogram" style="--c: var(--blue)">TK</span>
+                <span class="page-item__label">Tokens</span>
+              </div>
+              <div class="page-item page-item--child">
+                <span class="monogram" style="--c: var(--sapphire)">CP</span>
+                <span class="page-item__label">Components</span>
+              </div>
+              <div class="page-item">
+                <svg class="i i--sm page-item__caret" aria-hidden="true"><use href="#i-chev-right" /></svg>
+                <span class="monogram" style="--c: var(--green)">RM</span>
+                <span class="page-item__label">Q4 Roadmap</span>
+              </div>
+              <div class="page-item">
+                <svg class="i i--sm page-item__caret" aria-hidden="true"><use href="#i-chev-right" /></svg>
+                <span class="monogram" style="--c: var(--yellow)">MT</span>
+                <span class="page-item__label">Meeting notes</span>
+              </div>
+              <div class="page-item">
+                <svg class="i i--sm page-item__caret" aria-hidden="true"><use href="#i-chev-right" /></svg>
+                <span class="monogram" style="--c: var(--pink)">RL</span>
+                <span class="page-item__label">Reading list</span>
+              </div>
+            </div>
+            <div class="sidebar__foot">
+              <button class="btn btn--ghost btn--icon btn--compact" type="button" aria-label="Search">
+                <svg class="i i--sm" aria-hidden="true"><use href="#i-search" /></svg>
+              </button>
+              <div class="seg" style="padding: 2px">
+                <button type="button" data-mock-theme="light" aria-label="Light theme" aria-pressed="false">
+                  <svg class="i i--sm" aria-hidden="true"><use href="#i-sun" /></svg>
+                </button>
+                <button type="button" data-mock-theme="dark" aria-label="Dark theme" aria-pressed="true">
+                  <svg class="i i--sm" aria-hidden="true"><use href="#i-moon" /></svg>
+                </button>
+              </div>
+              <button class="btn btn--ghost btn--icon btn--compact" type="button" aria-label="Settings">
+                <svg class="i i--sm" aria-hidden="true"><use href="#i-settings" /></svg>
+              </button>
+            </div>
+          </aside>
+          <div class="app__main">
+            <div class="app__bar">
+              <nav class="crumbs" aria-label="Breadcrumbs">
+                <span class="crumb">Design</span>
+                <svg class="i i--sm" aria-hidden="true"><use href="#i-chev-right" /></svg>
+                <span class="crumb crumb--current">Mocha Synapse</span>
+              </nav>
+              <div class="app__bar-actions">
+                <button class="btn btn--ghost btn--compact" type="button">
+                  <svg class="i i--sm" aria-hidden="true"><use href="#i-search" /></svg>Search
+                  <span class="kbd">⌘K</span>
+                </button>
+                <button class="btn btn--ghost btn--icon btn--compact" type="button" aria-label="More">
+                  <svg class="i i--sm" aria-hidden="true"><use href="#i-more" /></svg>
+                </button>
+              </div>
+            </div>
+            <div class="app__page">
+              <div class="doc-content">
+                <h3 class="doc-title">
+                  <span class="monogram" style="--c: var(--mauve)">MS</span>Mocha Synapse
+                </h3>
+                <div class="block block--p block--menu-open">
+                  <span class="block__handle">
+                    <button type="button" aria-label="Add block"><svg class="i i--sm" aria-hidden="true"><use href="#i-plus" /></svg></button>
+                    <button type="button" aria-label="Block menu"><svg class="i i--sm" aria-hidden="true"><use href="#i-grip" /></svg></button>
+                  </span>
+                  Cool surfaces, violet signals, compact controls. The interface stays quiet enough
+                  to write in for hours<span class="caret"></span>
+                </div>
+                <div class="block block--h2">Foundations</div>
+                <div class="block block--bullet">
+                  <span class="block__bullet"></span><span class="block__text">Depth from layered surfaces, never heavy shadows</span>
+                </div>
+                <div class="block block--bullet">
+                  <span class="block__bullet"></span><span class="block__text">Pastels mark meaning: selection, focus, status</span>
+                </div>
+                <div class="block block--bullet">
+                  <span class="block__bullet"></span><span class="block__text">Monospace for code, shortcuts, and identifiers</span>
+                </div>
+                <div class="block block--todo block--done">
+                  <span class="cbx cbx--done"><svg class="i" style="width: 11px; height: 11px" aria-hidden="true"><use href="#i-check" /></svg></span>
+                  <span class="block__text">Define Mocha and Latte tokens</span>
+                </div>
+                <div class="block block--todo">
+                  <span class="cbx cbx--progress"></span>
+                  <span class="block__text">Pick the todo shape before v0.2</span>
+                </div>
+                <div class="block block--quote">A fresh interface is one you can stare at all day.</div>
+                <div class="block block--code">
+                  <div><span class="tok-key">:root</span> {</div>
+                  <div>&nbsp;&nbsp;<span class="tok-var">--canvas</span>: <span class="tok-val">#1e1e2e</span>;</div>
+                  <div>&nbsp;&nbsp;<span class="tok-var">--accent</span>: <span class="tok-val">#cba6f7</span>;</div>
+                  <div>}</div>
+                </div>
+                <div class="block block--divider"><hr /></div>
+                <div class="block block--muted">Type "/" for commands</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="spacing">
+        <header class="sec-head">
+          <p class="overline">06 · Rhythm</p>
+          <h2 class="sec-title">Spacing</h2>
+          <p class="sec-desc">
+            A 4px base keeps control heights on a grid. Writing breathes at 16px lines; chrome packs
+            at 28 to 36px.
+          </p>
+        </header>
+
+        <div class="grid-2">
+          <div class="panel">
+            <p class="panel__label">Scale</p>
+            <p class="panel__hint">Base unit 4px. Steps 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.</p>
+            <div class="spacerows">
+              <div class="spacerow"><span class="spacerow__val">2</span><span class="spacerow__val">2px</span><span class="spacebar" style="width: 2px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">4</span><span class="spacerow__val">4px</span><span class="spacebar" style="width: 4px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">8</span><span class="spacerow__val">8px</span><span class="spacebar" style="width: 8px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">12</span><span class="spacerow__val">12px</span><span class="spacebar" style="width: 12px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">16</span><span class="spacerow__val">16px</span><span class="spacebar" style="width: 16px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">24</span><span class="spacerow__val">24px</span><span class="spacebar" style="width: 24px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">32</span><span class="spacerow__val">32px</span><span class="spacebar" style="width: 32px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">48</span><span class="spacerow__val">48px</span><span class="spacebar" style="width: 48px"></span></div>
+              <div class="spacerow"><span class="spacerow__val">64</span><span class="spacerow__val">64px</span><span class="spacebar" style="width: 64px"></span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <p class="panel__label">Applied</p>
+            <p class="panel__hint">Padding and gaps by surface.</p>
+            <table class="table">
+              <tbody>
+                <tr><td>Buttons</td><td class="mono">4px 12px</td><td class="muted">28–32px tall</td></tr>
+                <tr><td>Inputs</td><td class="mono">4px 10px</td><td class="muted">28–32px tall</td></tr>
+                <tr><td>Rows</td><td class="mono">8px 10px</td><td class="muted">24–36px tall</td></tr>
+                <tr><td>Chips</td><td class="mono">2px 8px</td><td class="muted">20px tall</td></tr>
+                <tr><td>Menus</td><td class="mono">4px</td><td class="muted">6px per item</td></tr>
+                <tr><td>Blocks</td><td class="mono">3px 2px</td><td class="muted">16px body</td></tr>
+                <tr><td>Page</td><td class="mono">40px 56px</td><td class="muted">640px measure</td></tr>
+                <tr><td>Sidebar</td><td class="mono">220px</td><td class="muted">48px rail collapsed</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="radius">
+        <header class="sec-head">
+          <p class="overline">07 · Rhythm</p>
+          <h2 class="sec-title">Border radius</h2>
+          <p class="sec-desc">Five values, no exceptions. Small parts stay sharp; floating parts soften.</p>
+        </header>
+
+        <div class="radii">
+          <div class="radius">
+            <div class="radius__box" style="border-radius: 4px"></div>
+            <div class="radius__meta"><span class="radius__val">4px</span><span class="muted small">Chips, badges, marks</span></div>
+          </div>
+          <div class="radius">
+            <div class="radius__box" style="border-radius: 6px"></div>
+            <div class="radius__meta"><span class="radius__val">6px</span><span class="muted small">Buttons, inputs, menu items</span></div>
+          </div>
+          <div class="radius">
+            <div class="radius__box" style="border-radius: 8px"></div>
+            <div class="radius__meta"><span class="radius__val">8px</span><span class="muted small">Menus, nav items, cards</span></div>
+          </div>
+          <div class="radius">
+            <div class="radius__box" style="border-radius: 12px"></div>
+            <div class="radius__meta"><span class="radius__val">12px</span><span class="muted small">Modals, palette, panels</span></div>
+          </div>
+          <div class="radius">
+            <div class="radius__box" style="border-radius: 9999px"></div>
+            <div class="radius__meta"><span class="radius__val">9999px</span><span class="muted small">Circles, avatars, keys</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="rules">
+        <header class="sec-head">
+          <p class="overline">08 · Discipline</p>
+          <h2 class="sec-title">Do's and Don'ts</h2>
+          <p class="sec-desc">The rules that keep the system fresh instead of noisy.</p>
+        </header>
+
+        <div class="rules">
+          <div class="rule rule--do">
+            <svg class="i" aria-hidden="true"><use href="#i-check" /></svg>
+            <span>Make every action keyboard-reachable, and surface the shortcut in its tooltip.</span>
+          </div>
+          <div class="rule rule--dont">
+            <svg class="i" aria-hidden="true"><use href="#i-x" /></svg>
+            <span>Don't rely on hue alone for status; pair it with an icon, shape, or text.</span>
+          </div>
+          <div class="rule rule--do">
+            <svg class="i" aria-hidden="true"><use href="#i-check" /></svg>
+            <span>Treat ⌘K as primary navigation, not just a search box.</span>
+          </div>
+          <div class="rule rule--dont">
+            <svg class="i" aria-hidden="true"><use href="#i-x" /></svg>
+            <span>Don't paint large areas with pastel. Accents stay under 15% of the screen.</span>
+          </div>
+          <div class="rule rule--do">
+            <svg class="i" aria-hidden="true"><use href="#i-check" /></svg>
+            <span>Build depth from layered surfaces; edges stay quiet and hairlines stay subtle.</span>
+          </div>
+          <div class="rule rule--dont">
+            <svg class="i" aria-hidden="true"><use href="#i-x" /></svg>
+            <span>Don't animate longer than 150ms. Hover feedback should feel immediate.</span>
+          </div>
+          <div class="rule rule--do">
+            <svg class="i" aria-hidden="true"><use href="#i-check" /></svg>
+            <span>Keep controls compact (28–36px) so the writing canvas gets the room.</span>
+          </div>
+          <div class="rule rule--dont">
+            <svg class="i" aria-hidden="true"><use href="#i-x" /></svg>
+            <span>Don't introduce warm hues outside warning and error semantics.</span>
+          </div>
+          <div class="rule rule--do">
+            <svg class="i" aria-hidden="true"><use href="#i-check" /></svg>
+            <span>Use mono for code, shortcuts, counts, and identifiers.</span>
+          </div>
+          <div class="rule rule--dont">
+            <svg class="i" aria-hidden="true"><use href="#i-x" /></svg>
+            <span>Don't go pure black. Crust is the floor; pure black clips the pastels.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot__inner">
+        <span>Mocha Synapse · preview v0.1</span>
+        <span>Catppuccin Mocha &amp; Latte · Inter &amp; JetBrains Mono (OFL)</span>
+        <span>Fonts load from Google in this file; the app will self-host them.</span>
+      </div>
+    </footer>
+
+    <script>
+      const root = document.documentElement;
+      const buttons = Array.from(document.querySelectorAll('[data-set-theme]'));
+      const mockButtons = Array.from(document.querySelectorAll('[data-mock-theme]'));
+      function apply(theme) {
+        root.dataset.theme = theme;
+        buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setTheme === theme)));
+        mockButtons.forEach((b) =>
+          b.setAttribute('aria-pressed', String(b.dataset.mockTheme === (theme === 'latte' ? 'light' : 'dark')))
+        );
+      }
+      buttons.forEach((b) =>
+        b.addEventListener('click', () => {
+          apply(b.dataset.setTheme);
+          try {
+            localStorage.setItem('mocha-synapse-theme', b.dataset.setTheme);
+          } catch {}
+        })
+      );
+      try {
+        const saved = localStorage.getItem('mocha-synapse-theme');
+        if (saved === 'mocha' || saved === 'latte') apply(saved);
+      } catch {}
+    </script>
+  </body>
+</html>
