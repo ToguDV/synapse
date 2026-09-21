@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
+import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
 import { useAnchoredPosition } from './rectAnchor'
 
@@ -55,11 +56,11 @@ export function PageMenu({
       ref={ref}
       data-page-menu={pageId}
       style={style}
-      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
+      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
       <MenuItem
         action="rename"
-        icon="✏️"
+        icon={<Icon name="pencil" size={15} />}
         label={t('pageMenu.rename')}
         onSelect={() => {
           onRename()
@@ -68,7 +69,7 @@ export function PageMenu({
       />
       <MenuItem
         action="add-child"
-        icon="↳"
+        icon={<Icon name="plus" size={15} />}
         label={t('pageMenu.addSubpage')}
         onSelect={() => {
           onAddChild()
@@ -77,7 +78,7 @@ export function PageMenu({
       />
       <MenuItem
         action="icon"
-        icon="😀"
+        icon={<Icon name="smile" size={15} />}
         label={t('pageMenu.changeIcon')}
         onSelect={() => {
           onIcon()
@@ -87,8 +88,9 @@ export function PageMenu({
       <div className="my-1 border-t border-border" />
       <MenuItem
         action="delete"
-        icon="⌫"
+        icon={<Icon name="trash" size={15} />}
         label={t('pageMenu.delete')}
+        danger
         onSelect={() => {
           onDelete()
           onClose()

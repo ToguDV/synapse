@@ -90,7 +90,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
       ref={listRef}
       data-slash-menu
       style={style}
-      className="fixed z-50 w-72 overflow-y-auto rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
+      className="fixed z-50 w-[292px] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
       {commands.length === 0 ? (
         <p className="px-3 py-2 text-sm text-faint">{t('common.noResults')}</p>
@@ -105,16 +105,16 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
             onMouseEnter={() => setActiveIndex(index)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onSelect(command.type)}
-            className={`flex w-full items-center gap-3 px-2 py-1.5 text-left transition ${
-              index === activeIndex ? 'bg-hover' : 'hover:bg-hover/60'
+            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition ${
+              index === activeIndex ? 'bg-selected' : 'hover:bg-hover'
             }`}
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border-strong bg-panel text-xs text-ink-soft">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-panel font-mono text-2xs font-semibold text-ink-soft">
               {command.icon}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-sm text-ink">{command.label}</span>
-              <span className="truncate text-xs text-faint">{command.description}</span>
+              <span className="truncate text-2xs text-faint">{command.description}</span>
             </span>
           </button>
         ))

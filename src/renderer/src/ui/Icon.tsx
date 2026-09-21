@@ -17,8 +17,9 @@ export type IconName =
   | 'enter'
   | 'trash'
   | 'copy'
-  | 'arrow-up'
+  |   'arrow-up'
   | 'arrow-down'
+  | 'arrow-left'
   | 'swap'
   | 'doc'
   | 'pencil'
@@ -91,6 +92,7 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   'arrow-up': <path d="M12 19.5v-15M6 10.5l6-6 6 6" />,
   'arrow-down': <path d="M12 4.5v15M6 13.5l6 6 6-6" />,
+  'arrow-left': <path d="M19.5 12h-15M10.5 6l-6 6 6 6" />,
   swap: <path d="M4.5 8.5h15M16 5l3.5 3.5L16 12M19.5 15.5h-15M8 12l-3.5 3.5L8 19" />,
   doc: (
     <>

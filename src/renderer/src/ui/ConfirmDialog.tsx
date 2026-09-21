@@ -34,7 +34,7 @@ export function ConfirmDialog({
   return (
     <div
       data-confirm-dialog
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--backdrop)] p-4 backdrop-blur-[4px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
@@ -42,7 +42,7 @@ export function ConfirmDialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-xl border border-border-strong bg-surface p-5 shadow-2xl"
+        className="w-full max-w-sm rounded-xl border border-border bg-surface p-5 shadow-modal"
       >
         <h2 className="text-base font-semibold text-ink">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
@@ -52,7 +52,7 @@ export function ConfirmDialog({
             type="button"
             data-confirm-cancel
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-sm text-ink-soft transition hover:bg-hover hover:text-ink"
+            className="rounded-md px-3 py-1.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
           >
             {t('common.cancel')}
           </button>
@@ -60,7 +60,7 @@ export function ConfirmDialog({
             type="button"
             data-confirm-accept
             onClick={onConfirm}
-            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-red-500"
+            className="rounded-md border border-error/40 px-3 py-1.5 text-sm font-medium text-error transition hover:bg-error/10"
           >
             {confirmLabel ?? t('common.delete')}
           </button>

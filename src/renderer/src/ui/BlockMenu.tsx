@@ -4,6 +4,7 @@ import { useEditorStore } from '../editor/editorStore'
 import { BLOCK_MENU_ORDER, getBlockDefinition } from '../editor/registry'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
+import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
 import { useAnchoredPosition } from './rectAnchor'
 
@@ -54,19 +55,19 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       ref={ref}
       data-block-menu
       style={style}
-      className="fixed z-50 w-60 overflow-hidden rounded-lg border border-border-strong bg-surface py-1 shadow-2xl"
+      className="fixed z-50 w-[292px] overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
       {view === 'main' ? (
         <>
           <MenuItem
             action="convert"
-            icon="⇄"
+            icon={<Icon name="swap" size={15} />}
             label={t('blockMenu.convert')}
             onSelect={() => setView('convert')}
           />
           <MenuItem
             action="duplicate"
-            icon="⧉"
+            icon={<Icon name="copy" size={15} />}
             label={t('blockMenu.duplicate')}
             hint="Ctrl+D"
             onSelect={() => {
@@ -76,7 +77,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           />
           <MenuItem
             action="move-up"
-            icon="↑"
+            icon={<Icon name="arrow-up" size={15} />}
             label={t('blockMenu.moveUp')}
             disabled={index === 0}
             onSelect={() => {
@@ -86,7 +87,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           />
           <MenuItem
             action="move-down"
-            icon="↓"
+            icon={<Icon name="arrow-down" size={15} />}
             label={t('blockMenu.moveDown')}
             disabled={index === blocks.length - 1}
             onSelect={() => {
@@ -97,9 +98,10 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
           <div className="my-1 border-t border-border" />
           <MenuItem
             action="delete"
-            icon="⌫"
+            icon={<Icon name="trash" size={15} />}
             label={t('blockMenu.delete')}
             hint="Del"
+            danger
             onSelect={() => {
               deleteBlocks([blockId])
               onClose()
@@ -110,7 +112,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
         <>
           <MenuItem
             action="back"
-            icon="←"
+            icon={<Icon name="arrow-left" size={15} />}
             label={t('blockMenu.convert')}
             onSelect={() => setView('main')}
           />

@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
+import { Kbd } from './Kbd'
 
 export function MenuItem({
   icon,
   label,
   hint,
+  danger,
   disabled,
   action,
   onSelect
@@ -11,6 +13,7 @@ export function MenuItem({
   icon: ReactNode
   label: string
   hint?: string
+  danger?: boolean
   disabled?: boolean
   action: string
   onSelect: () => void
@@ -22,13 +25,23 @@ export function MenuItem({
       disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onSelect}
-      className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm text-ink-soft transition enabled:hover:bg-hover disabled:cursor-default disabled:text-faintest"
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition disabled:cursor-default disabled:text-faintest ${
+        danger
+          ? 'text-error enabled:hover:bg-error/10'
+          : 'text-ink-soft enabled:hover:bg-hover enabled:hover:text-ink'
+      }`}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-muted">
+      <span
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-panel font-mono text-2xs font-semibold ${
+          danger ? 'text-error' : 'text-ink-soft'
+        }`}
+      >
         {icon}
       </span>
       <span className="flex-1 truncate">{label}</span>
-      {hint && <span className="text-xs text-faintest">{hint}</span>}
+      {hint && (
+        <Kbd className="border-transparent bg-transparent px-0 text-faintest">{hint}</Kbd>
+      )}
     </button>
   )
 }

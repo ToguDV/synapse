@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { PAGE_EMOJIS } from './emojis'
+import { Icon } from './Icon'
 import { useAnchoredPosition } from './rectAnchor'
 
 interface IconPickerProps {
@@ -45,19 +46,19 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
       ref={ref}
       data-icon-picker
       style={{ ...style, width: PICKER_WIDTH }}
-      className="fixed z-[70] max-h-[70vh] overflow-y-auto rounded-lg border border-border-strong bg-surface shadow-2xl"
+      className="fixed z-[70] max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
       {current && (
         <button
           type="button"
           data-icon-remove
           onClick={() => onSelect(null)}
-          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink-soft transition hover:bg-hover hover:text-ink"
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-hover hover:text-ink"
         >
-          <span className="text-faint">✕</span> {t('iconPicker.remove')}
+          <Icon name="x" size={14} /> {t('iconPicker.remove')}
         </button>
       )}
-      <div className="grid grid-cols-8 gap-1 p-2">
+      <div className="grid grid-cols-8 gap-0.5 p-1">
         {PAGE_EMOJIS.map((emoji) => (
           <button
             key={emoji}
@@ -66,7 +67,7 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
             title={emoji}
             onClick={() => onSelect(emoji)}
             className={`flex h-8 items-center justify-center rounded-md text-lg transition hover:bg-hover ${
-              emoji === current ? 'bg-hover' : ''
+              emoji === current ? 'bg-selected' : ''
             }`}
           >
             {emoji}
