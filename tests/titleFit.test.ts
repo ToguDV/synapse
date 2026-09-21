@@ -27,14 +27,14 @@ describe('fitTitleFontSize', () => {
 
 describe('titleLineHeight', () => {
   it('escala la altura de línea con la fuente', () => {
-    expect(titleLineHeight(TITLE_FONT_MAX)).toBe(40)
-    expect(titleLineHeight(TITLE_FONT_MIN)).toBe(27)
+    expect(titleLineHeight(TITLE_FONT_MAX)).toBe(39)
+    expect(titleLineHeight(TITLE_FONT_MIN)).toBe(28)
   })
 })
 
 describe('titleIconOffset', () => {
   it('centra el icono con la primera línea del título', () => {
-    expect(titleIconOffset(TITLE_FONT_MAX, 48)).toBe(-4)
-    expect(titleIconOffset(TITLE_FONT_MIN, 48)).toBe(-10.5)
+    expect(titleIconOffset(TITLE_FONT_MAX, 48)).toBe(-4.5)
+    expect(titleIconOffset(TITLE_FONT_MIN, 48)).toBe(-10)
   })
 })

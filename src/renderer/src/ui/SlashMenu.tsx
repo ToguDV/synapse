@@ -113,7 +113,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
               {command.icon}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm text-ink">{command.label}</span>
+              <span className="truncate text-sm font-medium text-ink">{command.label}</span>
               <span className="truncate text-2xs text-faint">{command.description}</span>
             </span>
           </button>

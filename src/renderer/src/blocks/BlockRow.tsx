@@ -244,11 +244,11 @@ export function BlockRow({
     )
   } else if (block.type === 'code') {
     content = (
-      <div className="my-1 w-full rounded-lg border border-border bg-code px-4 py-3.5">{body}</div>
+      <div className="my-2 w-full rounded-lg border border-border bg-code px-4 py-3.5">{body}</div>
     )
   } else {
     content = (
-      <div className={`flex items-start gap-[9px] py-[3px] ${block.type === 'heading' ? 'mt-[19px]' : ''}`}>
+      <div className={`flex items-start gap-[9px] py-[3px] ${block.type === 'heading' ? 'mt-[22px]' : ''}`}>
         {prefix}
         {body}
       </div>
@@ -270,6 +270,7 @@ export function BlockRow({
     >
       <BlockHandle
         visible={dragging || menuOpen}
+        active={menuOpen}
         onPointerDown={(event) => onHandlePointerDown(block.id, event)}
       />
       {content}

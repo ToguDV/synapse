@@ -44,15 +44,15 @@ export function ConfirmDialog({
         aria-modal="true"
         className="w-full max-w-sm rounded-xl border border-border bg-surface p-5 shadow-modal"
       >
-        <h2 className="text-base font-semibold text-ink">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">{message}</p>
-        <div className="mt-5 flex justify-end gap-2">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        <p className="mt-1 text-xs text-faint">{message}</p>
+        <div className="mt-[18px] flex justify-end gap-2">
           <button
             ref={cancelRef}
             type="button"
             data-confirm-cancel
             onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-sm text-muted transition hover:bg-hover hover:text-ink"
+            className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-muted transition hover:bg-hover hover:text-ink"
           >
             {t('common.cancel')}
           </button>
@@ -60,7 +60,7 @@ export function ConfirmDialog({
             type="button"
             data-confirm-accept
             onClick={onConfirm}
-            className="rounded-md border border-error/40 px-3 py-1.5 text-sm font-medium text-error transition hover:bg-error/10"
+            className="flex h-7 items-center rounded-md border border-error/40 px-2.5 text-xs font-medium text-error transition hover:bg-error/12"
           >
             {confirmLabel ?? t('common.delete')}
           </button>

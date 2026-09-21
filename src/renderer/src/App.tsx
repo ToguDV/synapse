@@ -119,12 +119,12 @@ function App() {
           <p className="mt-24 self-center text-sm text-faint">{t('common.loading')}</p>
         ) : (
           <>
-            <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-canvas py-2 pr-3 pl-4">
+            <div className="sticky top-0 z-30 flex items-center gap-2.5 border-b border-border bg-canvas py-2 pr-3 pl-4">
               <Breadcrumbs pageId={activePage.id} />
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-muted transition hover:bg-hover hover:text-ink"
+                className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted transition hover:bg-hover hover:text-ink"
               >
                 <Icon name="search" size={14} />
                 {t('sidebar.search')}
@@ -176,7 +176,7 @@ function App() {
                     fontSize: `${titleSize}px`,
                     lineHeight: `${titleLineHeight(titleSize)}px`
                   }}
-                  className="w-full resize-none overflow-hidden break-words bg-transparent font-semibold tracking-[-0.02em] outline-none placeholder:text-faint"
+                  className="w-full resize-none overflow-hidden break-words bg-transparent font-semibold tracking-[-0.03em] outline-none placeholder:text-faint"
                 />
               </div>
               <BlockList pageId={activePage.id} />

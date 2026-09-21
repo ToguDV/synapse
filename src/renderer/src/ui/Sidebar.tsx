@@ -64,7 +64,7 @@ function ThemeSegmented() {
       data-theme-preference={preference}
       role="group"
       aria-label={t('theme.ariaLabel')}
-      className="inline-flex gap-0.5 rounded-lg border border-border p-0.5"
+      className="inline-flex gap-0.5 rounded-[9px] border border-border bg-hover p-0.5"
     >
       {THEME_OPTIONS.map((option) => {
         const meta = THEME_META[option]
@@ -76,7 +76,7 @@ function ThemeSegmented() {
             aria-pressed={option === preference}
             title={t(meta.labelKey)}
             onClick={() => setPreference(option)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-faint transition hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink"
+            className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-muted transition hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-[0_1px_3px_rgb(0_0_0/0.18)]"
           >
             <Icon name={meta.icon} size={14} />
           </button>
@@ -180,8 +180,8 @@ function PageTreeItem({
         data-page-drop={dropZone ?? undefined}
         data-page-dragging={isDragging ? 'true' : undefined}
         data-active={isActive}
-        style={{ paddingLeft: depth * 12 }}
-        className={`group relative flex h-[30px] items-center gap-1 rounded-md pr-1 transition ${
+        style={{ marginLeft: depth * 16 }}
+        className={`group relative flex h-[30px] items-center gap-1.5 rounded-md px-2 transition ${
           dropZone === 'inside'
             ? 'bg-selected text-ink ring-1 ring-inset ring-sapphire'
             : isActive
@@ -202,12 +202,12 @@ function PageTreeItem({
             data-expanded={expanded}
             aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
             onClick={() => toggleExpanded(page.id)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
+            className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-faint transition hover:bg-hover hover:text-ink"
           >
             <Icon name={expanded ? 'chev-down' : 'chev-right'} size={13} />
           </button>
         ) : (
-          <span className="h-5 w-5 shrink-0" />
+          <span className="h-5 w-3.5 shrink-0" />
         )}
         {isRenaming ? (
           <RenameInput
@@ -228,7 +228,7 @@ function PageTreeItem({
               selectPage(page.id)
             }}
             onDoubleClick={() => onStartRename(page.id)}
-            className="flex h-full min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-medium"
+            className="flex h-full min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-semibold"
           >
             {page.icon && (
               <span data-page-icon className="shrink-0 text-sm leading-none">
@@ -433,8 +433,8 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-border bg-panel">
       <div className="px-2.5 pt-2.5">
-        <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
-          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-accent-soft font-mono text-2xs font-semibold text-accent">
+        <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-hover">
+          <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] text-[10px] font-semibold text-accent">
             SY
           </span>
           <span className="flex-1 truncate text-sm font-semibold text-ink">Synapse</span>
@@ -449,11 +449,11 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
         >
           <Icon name="search" size={13} />
           <span className="flex-1 text-left">{t('sidebar.search')}</span>
-          <Kbd className="border-transparent bg-transparent px-0">Ctrl K</Kbd>
+          <Kbd>Ctrl K</Kbd>
         </button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-        <div className="mt-4 mb-1 flex items-center justify-between pr-1 pl-2">
+        <div className="mt-3 mb-1.5 flex items-center justify-between pr-1 pl-2">
           <p className="text-2xs font-semibold tracking-[0.05em] text-faint uppercase">
             {t('sidebar.pagesLabel')}
           </p>
@@ -535,13 +535,13 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
           onCancel={() => setConfirmId(null)}
         />
       )}
-      <div className="flex items-center justify-between gap-2 border-t border-border p-2">
+      <div className="flex items-center justify-between gap-2 border-t border-border p-2.5">
         <button
           type="button"
           aria-label={t('sidebar.search')}
           title={t('sidebar.searchTooltip')}
           onClick={onOpenSearch}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-faint transition hover:bg-hover hover:text-ink"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
         >
           <Icon name="search" size={14} />
         </button>

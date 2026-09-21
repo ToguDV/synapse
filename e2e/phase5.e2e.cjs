@@ -582,8 +582,8 @@ async function stage7TitleFit(page) {
   )
   check(
     steps,
-    'la altura de línea acompaña a la fuente mínima (27px)',
-    metrics.lineHeight === 27,
+    'la altura de línea acompaña a la fuente mínima (28px)',
+    metrics.lineHeight === 28,
     metrics.lineHeight
   )
   check(

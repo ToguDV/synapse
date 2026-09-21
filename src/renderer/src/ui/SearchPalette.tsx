@@ -130,7 +130,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                 {isFirstPage && (
                   <p
                     data-search-group="pages"
-                    className="px-2 pt-3 pb-1 text-2xs font-semibold tracking-[0.05em] text-faint uppercase"
+                    className="px-2 pt-2 pb-1 text-2xs font-semibold tracking-[0.05em] text-faint uppercase"
                   >
                     {t('search.pagesGroup')}
                   </p>
@@ -138,7 +138,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                 {isFirstBlock && (
                   <p
                     data-search-group="blocks"
-                    className="px-2 pt-3 pb-1 text-2xs font-semibold tracking-[0.05em] text-faint uppercase"
+                    className="px-2 pt-2 pb-1 text-2xs font-semibold tracking-[0.05em] text-faint uppercase"
                   >
                     {t('search.blocksGroup')}
                   </p>

@@ -1,6 +1,6 @@
-export const TITLE_FONT_MAX = 36
+export const TITLE_FONT_MAX = 34
 export const TITLE_FONT_MIN = 24
-const TITLE_LINE_RATIO = 40 / 36
+const TITLE_LINE_RATIO = 1.15
 
 export function fitTitleFontSize(available: number, measure: (size: number) => number): number {
   if (available <= 0) return TITLE_FONT_MAX

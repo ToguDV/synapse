@@ -50,7 +50,7 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
   code: {
     type: 'code',
     icon: '</>',
-    textClasses: 'font-mono text-sm leading-[1.7] whitespace-pre-wrap break-words',
+    textClasses: 'font-mono text-sm leading-[1.7] text-ink-soft whitespace-pre-wrap break-words',
     continuation: 'code',
     textual: true
   },
@@ -58,7 +58,7 @@ export const BLOCK_DEFINITIONS: Record<BlockType, BlockDefinition> = {
     type: 'quote',
     icon: '❝',
     textClasses:
-      'border-l-[3px] border-accent pl-3.5 text-base leading-[1.6] text-ink-soft whitespace-pre-wrap break-words',
+      'my-2 border-l-[3px] border-accent pl-3.5 text-base leading-[1.6] text-ink-soft whitespace-pre-wrap break-words',
     continuation: 'quote',
     textual: true
   },

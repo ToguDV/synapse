@@ -38,10 +38,8 @@ export function MenuItem({
       >
         {icon}
       </span>
-      <span className="flex-1 truncate">{label}</span>
-      {hint && (
-        <Kbd className="border-transparent bg-transparent px-0 text-faintest">{hint}</Kbd>
-      )}
+      <span className="flex-1 truncate font-medium">{label}</span>
+      {hint && <Kbd>{hint}</Kbd>}
     </button>
   )
 }
