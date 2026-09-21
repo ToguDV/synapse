@@ -182,5 +182,12 @@ palette, typography, elevation, components, and a full editor mock in both flavo
 open the file directly or serve the folder. It is documentation only and is not packaged with the
 app (`electron-builder` ships `out/**` and `package.json`).
 
-The tokens in this document are not applied to the app yet; `src/renderer/src/assets/main.css` still
-uses the previous neutral palette. Applying them is a follow-up change.
+The tokens in this document are applied to the app: `src/renderer/src/assets/main.css` defines them
+for Latte (`:root`) and Mocha (`.dark`), and `@theme inline` exposes them to the components. Inter
+and JetBrains Mono are self-hosted as variable woff2 subsets in `src/renderer/src/assets/fonts/`.
+
+Applied with three conscious deviations: the todo checkbox implements two of its five states (Todo
+and Done) because the data model stores a boolean `checked`; the theme control is a three-way
+segmented toggle (system / light / dark) that selects directly instead of cycling; and the mock's
+block-handle `+` and settings/more buttons were not added, to avoid inventing functionality the app
+does not have.
