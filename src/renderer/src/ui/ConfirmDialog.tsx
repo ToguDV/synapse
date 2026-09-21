@@ -52,7 +52,7 @@ export function ConfirmDialog({
             type="button"
             data-confirm-cancel
             onClick={onCancel}
-            className="flex h-7 items-center rounded-md px-2.5 text-xs font-medium text-muted transition hover:bg-hover hover:text-ink"
+            className="flex h-10 items-center rounded-md px-3 text-xs font-medium text-muted transition hover:bg-hover hover:text-ink sm:h-7 sm:px-2.5"
           >
             {t('common.cancel')}
           </button>
@@ -60,7 +60,7 @@ export function ConfirmDialog({
             type="button"
             data-confirm-accept
             onClick={onConfirm}
-            className="flex h-7 items-center rounded-md border border-error/40 px-2.5 text-xs font-medium text-error transition hover:bg-error/12"
+            className="flex h-10 items-center rounded-md border border-error/40 px-3 text-xs font-medium text-error transition hover:bg-error/12 sm:h-7 sm:px-2.5"
           >
             {confirmLabel ?? t('common.delete')}
           </button>

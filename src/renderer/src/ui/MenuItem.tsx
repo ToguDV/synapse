@@ -9,6 +9,7 @@ export function MenuItem({
   danger,
   disabled,
   tone,
+  touch,
   action,
   onSelect
 }: {
@@ -18,6 +19,7 @@ export function MenuItem({
   danger?: boolean
   disabled?: boolean
   tone?: IconTone
+  touch?: boolean
   action: string
   onSelect: () => void
 }) {
@@ -36,7 +38,9 @@ export function MenuItem({
       disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onSelect}
-      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition disabled:cursor-default disabled:text-faintest ${
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 text-left text-sm transition disabled:cursor-default disabled:text-faintest ${
+        touch ? 'min-h-11 py-2' : 'py-1.5'
+      } ${
         danger
           ? 'text-error enabled:hover:bg-error/10'
           : 'text-ink-soft enabled:hover:bg-hover enabled:hover:text-ink'
@@ -44,7 +48,9 @@ export function MenuItem({
     >
       <span
         style={tileStyle}
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border font-mono text-2xs font-semibold ${
+        className={`flex shrink-0 items-center justify-center rounded-md border font-mono text-2xs font-semibold ${
+          touch ? 'h-8 w-8' : 'h-7 w-7'
+        } ${
           toned ? '' : `border-border bg-panel ${danger ? 'text-error' : 'text-ink-soft'}`
         }`}
       >

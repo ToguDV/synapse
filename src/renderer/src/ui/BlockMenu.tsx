@@ -6,7 +6,9 @@ import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
+import { Sheet } from './Sheet'
 import { useAnchoredPosition } from './rectAnchor'
+import { useTouchInput } from './useMediaQuery'
 
 interface BlockMenuProps {
   blockId: string
@@ -18,6 +20,7 @@ interface BlockMenuProps {
 export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProps) {
   const { t } = useTranslation()
   const [view, setView] = useState<'main' | 'convert'>('main')
+  const asSheet = useTouchInput()
   const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
   const blocks = useEditorStore((state) => state.blocks)
   const duplicateBlocks = useEditorStore((state) => state.duplicateBlocks)
@@ -28,6 +31,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
   const block = index >= 0 ? blocks[index] : null
 
   useEffect(() => {
+    if (asSheet) return
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target
       if (ref.current && target instanceof Node && ref.current.contains(target)) return
@@ -46,9 +50,110 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       document.removeEventListener('pointerdown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [onClose])
+  }, [asSheet, onClose, ref])
 
   if (!block) return null
+
+  const items =
+    view === 'main' ? (
+      <>
+        <MenuItem
+          action="convert"
+          icon={<Icon name="swap" size={16} />}
+          tone="accent"
+          label={t('blockMenu.convert')}
+          touch={asSheet}
+          onSelect={() => setView('convert')}
+        />
+        <MenuItem
+          action="duplicate"
+          icon={<Icon name="copy" size={16} />}
+          tone="sapphire"
+          label={t('blockMenu.duplicate')}
+          hint="Ctrl+D"
+          touch={asSheet}
+          onSelect={() => {
+            duplicateBlocks([blockId])
+            onClose()
+          }}
+        />
+        <MenuItem
+          action="move-up"
+          icon={<Icon name="arrow-up" size={16} />}
+          tone="sky"
+          label={t('blockMenu.moveUp')}
+          touch={asSheet}
+          disabled={index === 0}
+          onSelect={() => {
+            moveBlockTo(blockId, index - 1, block.indent)
+            onClose()
+          }}
+        />
+        <MenuItem
+          action="move-down"
+          icon={<Icon name="arrow-down" size={16} />}
+          tone="sky"
+          label={t('blockMenu.moveDown')}
+          touch={asSheet}
+          disabled={index === blocks.length - 1}
+          onSelect={() => {
+            moveBlockTo(blockId, index + 1, block.indent)
+            onClose()
+          }}
+        />
+        <div className="my-1 border-t border-border" />
+        <MenuItem
+          action="delete"
+          icon={<Icon name="trash" size={16} />}
+          tone="error"
+          label={t('blockMenu.delete')}
+          hint="Del"
+          touch={asSheet}
+          danger
+          onSelect={() => {
+            deleteBlocks([blockId])
+            onClose()
+          }}
+        />
+      </>
+    ) : (
+      <>
+        <MenuItem
+          action="back"
+          icon={<Icon name="arrow-left" size={16} />}
+          tone="sky"
+          label={t('blockMenu.convert')}
+          touch={asSheet}
+          onSelect={() => setView('main')}
+        />
+        <div className="my-1 border-t border-border" />
+        {BLOCK_MENU_ORDER.map((type) => {
+          const definition = getBlockDefinition(type)
+          return (
+            <MenuItem
+              key={type}
+              action={`convert-${type}`}
+              icon={definition.icon}
+              label={t(`blocks.${type}.label`)}
+              touch={asSheet}
+              disabled={type === block.type}
+              onSelect={() => {
+                convertBlock(blockId, type)
+                onClose()
+              }}
+            />
+          )
+        })}
+      </>
+    )
+
+  if (asSheet) {
+    return (
+      <Sheet label={t('blocks.handle.label')} id="block-menu" onClose={onClose}>
+        {items}
+      </Sheet>
+    )
+  }
 
   return createPortal(
     <div
@@ -57,90 +162,7 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       style={style}
       className="fixed z-50 w-[292px] overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
-      {view === 'main' ? (
-        <>
-          <MenuItem
-            action="convert"
-            icon={<Icon name="swap" size={16} />}
-            tone="accent"
-            label={t('blockMenu.convert')}
-            onSelect={() => setView('convert')}
-          />
-          <MenuItem
-            action="duplicate"
-            icon={<Icon name="copy" size={16} />}
-            tone="sapphire"
-            label={t('blockMenu.duplicate')}
-            hint="Ctrl+D"
-            onSelect={() => {
-              duplicateBlocks([blockId])
-              onClose()
-            }}
-          />
-          <MenuItem
-            action="move-up"
-            icon={<Icon name="arrow-up" size={16} />}
-            tone="sky"
-            label={t('blockMenu.moveUp')}
-            disabled={index === 0}
-            onSelect={() => {
-              moveBlockTo(blockId, index - 1, block.indent)
-              onClose()
-            }}
-          />
-          <MenuItem
-            action="move-down"
-            icon={<Icon name="arrow-down" size={16} />}
-            tone="sky"
-            label={t('blockMenu.moveDown')}
-            disabled={index === blocks.length - 1}
-            onSelect={() => {
-              moveBlockTo(blockId, index + 1, block.indent)
-              onClose()
-            }}
-          />
-          <div className="my-1 border-t border-border" />
-          <MenuItem
-            action="delete"
-            icon={<Icon name="trash" size={16} />}
-            tone="error"
-            label={t('blockMenu.delete')}
-            hint="Del"
-            danger
-            onSelect={() => {
-              deleteBlocks([blockId])
-              onClose()
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <MenuItem
-            action="back"
-            icon={<Icon name="arrow-left" size={16} />}
-            tone="sky"
-            label={t('blockMenu.convert')}
-            onSelect={() => setView('main')}
-          />
-          <div className="my-1 border-t border-border" />
-          {BLOCK_MENU_ORDER.map((type) => {
-            const definition = getBlockDefinition(type)
-            return (
-              <MenuItem
-                key={type}
-                action={`convert-${type}`}
-                icon={definition.icon}
-                label={t(`blocks.${type}.label`)}
-                disabled={type === block.type}
-                onSelect={() => {
-                  convertBlock(blockId, type)
-                  onClose()
-                }}
-              />
-            )
-          })}
-        </>
-      )}
+      {items}
     </div>,
     document.body
   )

@@ -4,7 +4,9 @@ import type { BlockType } from '../../../shared/types'
 import { filterSlashCommands, buildSlashCommands } from '../editor/commands'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
+import { Sheet } from './Sheet'
 import { useAnchoredPosition } from './rectAnchor'
+import { useTouchInput } from './useMediaQuery'
 
 interface SlashMenuProps {
   anchor: RectAnchor
@@ -17,6 +19,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
   const { t, locale } = useTranslation()
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  const asSheet = useTouchInput()
   const { ref: listRef, style } = useAnchoredPosition(anchor, { getAnchor })
   const queryRef = useRef(query)
   const activeRef = useRef(activeIndex)
@@ -71,6 +74,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
   }, [commands, onSelect, onClose])
 
   useEffect(() => {
+    if (asSheet) return
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target
       if (listRef.current && target instanceof Node && listRef.current.contains(target)) return
@@ -78,12 +82,56 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
     }
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => document.removeEventListener('pointerdown', onPointerDown, true)
-  }, [onClose])
+  }, [asSheet, onClose, listRef])
 
   useEffect(() => {
     const item = listRef.current?.querySelector<HTMLElement>(`[data-slash-index="${activeIndex}"]`)
     item?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex])
+  }, [activeIndex, listRef])
+
+  const items =
+    commands.length === 0 ? (
+      <p className="px-3 py-2 text-sm text-faint">{t('common.noResults')}</p>
+    ) : (
+      commands.map((command, index) => (
+        <button
+          key={command.type}
+          type="button"
+          data-slash-item={command.type}
+          data-slash-index={index}
+          data-active={index === activeIndex}
+          onMouseEnter={() => setActiveIndex(index)}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onSelect(command.type)}
+          className={`flex w-full items-center gap-2.5 rounded-md px-2 text-left transition ${
+            asSheet ? 'min-h-12 py-2' : 'py-1.5'
+          } ${index === activeIndex ? 'bg-selected' : 'hover:bg-hover'}`}
+        >
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-panel font-mono text-2xs font-semibold text-ink-soft">
+            {command.icon}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-medium text-ink">{command.label}</span>
+            <span className="truncate text-2xs text-faint">{command.description}</span>
+          </span>
+        </button>
+      ))
+    )
+
+  if (asSheet) {
+    return (
+      <Sheet
+        label={t('slashMenu.ariaLabel')}
+        id="slash-menu"
+        onClose={() => onClose(queryRef.current)}
+        closeOnEscape={false}
+      >
+        <div ref={listRef} data-slash-menu className="p-1">
+          {items}
+        </div>
+      </Sheet>
+    )
+  }
 
   return createPortal(
     <div
@@ -92,33 +140,7 @@ export function SlashMenu({ anchor, getAnchor, onSelect, onClose }: SlashMenuPro
       style={style}
       className="fixed z-50 w-[292px] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-pop"
     >
-      {commands.length === 0 ? (
-        <p className="px-3 py-2 text-sm text-faint">{t('common.noResults')}</p>
-      ) : (
-        commands.map((command, index) => (
-          <button
-            key={command.type}
-            type="button"
-            data-slash-item={command.type}
-            data-slash-index={index}
-            data-active={index === activeIndex}
-            onMouseEnter={() => setActiveIndex(index)}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => onSelect(command.type)}
-            className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition ${
-              index === activeIndex ? 'bg-selected' : 'hover:bg-hover'
-            }`}
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-panel font-mono text-2xs font-semibold text-ink-soft">
-              {command.icon}
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium text-ink">{command.label}</span>
-              <span className="truncate text-2xs text-faint">{command.description}</span>
-            </span>
-          </button>
-        ))
-      )}
+      {items}
     </div>,
     document.body
   )

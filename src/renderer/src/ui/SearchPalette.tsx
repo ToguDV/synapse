@@ -93,16 +93,16 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--backdrop)] p-4 backdrop-blur-[4px]"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--backdrop)] p-0 backdrop-blur-[4px] sm:p-4"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t('search.ariaLabel')}
         onKeyDown={handleKeyDown}
-        className="flex max-h-[70vh] w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-modal"
+        className="flex h-dvh w-full flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[70vh] sm:w-[560px] sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border sm:border-border sm:shadow-modal"
       >
-        <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-3.5">
+        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-3.5 sm:h-11">
           <Icon name="search" size={17} className="shrink-0" />
           <input
             data-search-input
@@ -112,7 +112,9 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
             placeholder={t('search.placeholder')}
             className="h-full min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-faint"
           />
-          <Kbd>Esc</Kbd>
+          <span className="hidden sm:inline-flex">
+            <Kbd>Esc</Kbd>
+          </span>
         </div>
         <ul ref={listRef} data-search-results className="min-h-0 flex-1 overflow-y-auto p-1.5">
           {term !== '' && results.length === 0 && (
@@ -156,7 +158,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
                   data-active={index === activeIndex}
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => onNavigate(result)}
-                  className={`flex h-9 w-full items-center gap-2.5 rounded-md border-l-2 px-2 text-left text-sm transition ${
+                  className={`flex h-11 w-full items-center gap-2.5 rounded-md border-l-2 px-2 text-left text-sm transition sm:h-9 ${
                     index === activeIndex
                       ? 'border-accent bg-selected text-ink'
                       : 'border-transparent text-ink-soft hover:bg-hover'

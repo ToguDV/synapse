@@ -4,7 +4,9 @@ import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
+import { Sheet } from './Sheet'
 import { useAnchoredPosition } from './rectAnchor'
+import { useTouchInput } from './useMediaQuery'
 
 interface PageMenuProps {
   pageId: string
@@ -28,9 +30,11 @@ export function PageMenu({
   onClose
 }: PageMenuProps) {
   const { t } = useTranslation()
+  const asSheet = useTouchInput()
   const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
 
   useEffect(() => {
+    if (asSheet) return
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target
       if (ref.current && target instanceof Node && ref.current.contains(target)) return
@@ -49,20 +53,16 @@ export function PageMenu({
       document.removeEventListener('pointerdown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown, true)
     }
-  }, [onClose])
+  }, [asSheet, onClose, ref])
 
-  return createPortal(
-    <div
-      ref={ref}
-      data-page-menu={pageId}
-      style={style}
-      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
-    >
+  const items = (
+    <>
       <MenuItem
         action="rename"
         icon={<Icon name="pencil" size={16} />}
         tone="warning"
         label={t('pageMenu.rename')}
+        touch={asSheet}
         onSelect={() => {
           onRename()
           onClose()
@@ -73,6 +73,7 @@ export function PageMenu({
         icon={<Icon name="plus" size={16} />}
         tone="accent"
         label={t('pageMenu.addSubpage')}
+        touch={asSheet}
         onSelect={() => {
           onAddChild()
           onClose()
@@ -83,6 +84,7 @@ export function PageMenu({
         icon={<Icon name="smile" size={16} />}
         tone="warning"
         label={t('pageMenu.changeIcon')}
+        touch={asSheet}
         onSelect={() => {
           onIcon()
           onClose()
@@ -94,12 +96,32 @@ export function PageMenu({
         icon={<Icon name="trash" size={16} />}
         tone="error"
         label={t('pageMenu.delete')}
+        touch={asSheet}
         danger
         onSelect={() => {
           onDelete()
           onClose()
         }}
       />
+    </>
+  )
+
+  if (asSheet) {
+    return (
+      <Sheet label={t('sidebar.pageOptions')} id="page-menu" onClose={onClose}>
+        {items}
+      </Sheet>
+    )
+  }
+
+  return createPortal(
+    <div
+      ref={ref}
+      data-page-menu={pageId}
+      style={style}
+      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
+    >
+      {items}
     </div>,
     document.body
   )
