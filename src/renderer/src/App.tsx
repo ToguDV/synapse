@@ -13,6 +13,8 @@ import { IconPicker } from './ui/IconPicker'
 import { Kbd } from './ui/Kbd'
 import { SearchPalette } from './ui/SearchPalette'
 import { rectAnchor, rectAnchorIfConnected } from './ui/rectAnchor'
+import { useHorizontalSwipe } from './ui/swipe'
+import { useIsMobile } from './ui/useMediaQuery'
 import { fitTitleFontSize, TITLE_FONT_MAX, titleIconOffset, titleLineHeight } from './ui/titleFit'
 
 let measureCanvas: HTMLCanvasElement | null = null
@@ -49,7 +51,19 @@ function App() {
   const [iconAnchor, setIconAnchor] = useState<RectAnchor | null>(null)
   const [titleSize, setTitleSize] = useState(TITLE_FONT_MAX)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const isMobile = useIsMobile()
   const title = activePage?.title ?? ''
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+
+  /* El drawer se cierra al navegar (elegir página, crear subpágina, borrar…). */
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [activePageId])
+
+  const edgeSwipe = useHorizontalSwipe((direction) => {
+    if (direction === 'right') setSidebarOpen(true)
+  })
 
   useEffect(() => {
     void initialize()
@@ -112,26 +126,61 @@ function App() {
   }, [syncTitle, ready, activePageId])
 
   return (
-    <div className="flex h-screen bg-canvas text-ink">
-      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
-      <main className="flex flex-1 flex-col overflow-y-auto">
+    <div className="flex h-dvh bg-canvas text-ink">
+      <Sidebar
+        open={sidebarOpen}
+        onClose={closeSidebar}
+        onOpenSearch={() => setSearchOpen(true)}
+      />
+      {isMobile && sidebarOpen && (
+        <div
+          data-sidebar-backdrop
+          aria-hidden="true"
+          onPointerDown={closeSidebar}
+          className="fixed inset-0 z-30 bg-[var(--backdrop)]"
+        />
+      )}
+      {isMobile && !sidebarOpen && (
+        <div
+          data-edge-swipe
+          aria-hidden="true"
+          {...edgeSwipe}
+          className="fixed inset-y-0 left-0 z-20 w-4 touch-pan-y"
+        />
+      )}
+      <main data-editor-scroll className="flex min-w-0 flex-1 flex-col overflow-y-auto">
         {!ready || !activePage ? (
           <p className="mt-24 self-center text-sm text-faint">{t('common.loading')}</p>
         ) : (
           <>
-            <div className="sticky top-0 z-30 flex items-center gap-2.5 border-b border-border bg-canvas py-2 pr-3 pl-4">
+            <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-canvas py-2 pr-3 pl-2 sm:gap-2.5 sm:pl-4">
+              <button
+                type="button"
+                data-sidebar-toggle
+                aria-label={t('sidebar.openSidebar')}
+                title={t('sidebar.openSidebar')}
+                onClick={() => setSidebarOpen(true)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink md:hidden"
+              >
+                <Icon name="menu" size={18} />
+              </button>
               <Breadcrumbs pageId={activePage.id} />
               <button
                 type="button"
+                data-search-trigger-top
+                aria-label={t('sidebar.search')}
+                title={t('sidebar.searchTooltip')}
                 onClick={() => setSearchOpen(true)}
                 className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted transition hover:bg-hover hover:text-ink"
               >
                 <Icon name="search" size={15} />
-                {t('sidebar.search')}
-                <Kbd className="ml-1">Ctrl K</Kbd>
+                <span className="hidden sm:inline">{t('sidebar.search')}</span>
+                <span className="ml-1 hidden md:inline-flex">
+                  <Kbd>Ctrl K</Kbd>
+                </span>
               </button>
             </div>
-            <div className="mx-auto w-full max-w-[640px] px-14 py-10">
+            <div className="mx-auto w-full max-w-[640px] pt-6 pr-4 pb-10 pl-9 sm:px-8 sm:pt-10 lg:px-14">
               <div className="group flex items-start gap-2">
                 <button
                   ref={iconButtonRef}

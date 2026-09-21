@@ -13,6 +13,7 @@ export type IconTone =
 export type IconName =
   | 'synapse'
   | 'search'
+  | 'menu'
   | 'plus'
   | 'chev-right'
   | 'chev-down'
@@ -40,6 +41,7 @@ export type IconName =
 const ICON_TONES: Record<IconName, IconTone> = {
   synapse: 'accent',
   search: 'accent',
+  menu: 'neutral',
   plus: 'accent',
   'chev-right': 'neutral',
   'chev-down': 'neutral',
@@ -78,6 +80,7 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M15.8 15.8L20.5 20.5" />
     </>
   ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   plus: <path d="M12 5.5v13M5.5 12h13" />,
   'chev-right': <path d="M9.5 6l6 6-6 6" />,
   'chev-down': <path d="M6 9.5l6 6 6-6" />,

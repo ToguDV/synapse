@@ -2,6 +2,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Dispositivos con puntero táctil (aunque tengan ratón, `any-pointer`).
+   Se usa para revelar controles que en escritorio solo aparecen al hover. */
+@custom-variant coarse (@media (any-pointer: coarse));
+
 /* Mocha Synapse: Latte (claro) por defecto, Mocha (oscuro) bajo `.dark`.
    El mapa de tokens vive en DESIGN.md; los componentes consumen solo estos nombres. */
 :root {
@@ -201,6 +205,21 @@
 
   ::selection {
     background: color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+
+  /* Táctil: sin lavado azul al tocar y sin retardo por doble tap en controles.
+     `manipulation` sigue permitiendo scroll y pinch-zoom. */
+  button,
+  [role='button'],
+  [data-block-handle],
+  [data-page-title] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  button,
+  [role='button'] {
+    touch-action: manipulation;
   }
 
   :focus-visible {

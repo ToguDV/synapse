@@ -16,6 +16,8 @@ export const en = {
     newPage: 'New page',
     search: 'Search',
     searchTooltip: 'Search (Ctrl+K)',
+    openSidebar: 'Open sidebar',
+    closeSidebar: 'Close sidebar',
     deleteConfirmTitle: 'Delete “{{title}}”?',
     deleteWithChildren: {
       one: 'This will also delete {{count}} subpage and all of its content. This action cannot be undone.',
@@ -45,6 +47,9 @@ export const en = {
     moveUp: 'Move up',
     moveDown: 'Move down',
     delete: 'Delete'
+  },
+  slashMenu: {
+    ariaLabel: 'Basic blocks'
   },
   search: {
     ariaLabel: 'Search',

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -19,6 +20,8 @@ import { IconPicker } from './IconPicker'
 import { Kbd } from './Kbd'
 import { PageMenu } from './PageMenu'
 import { rectAnchor, rectAnchorIfConnected } from './rectAnchor'
+import { useHorizontalSwipe } from './swipe'
+import { useIsMobile } from './useMediaQuery'
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
 
@@ -28,6 +31,9 @@ interface PendingPageDrag {
   pageId: string
   x: number
   y: number
+  pointerId: number
+  target: HTMLButtonElement
+  byTouch: boolean
 }
 
 interface PageDragState {
@@ -42,6 +48,9 @@ interface PageDropTarget {
 }
 
 const DRAG_THRESHOLD_PX = 4
+const TOUCH_DRAG_THRESHOLD_PX = 8
+const TOUCH_CANCEL_PX = 8
+const LONG_PRESS_MS = 450
 const AUTO_EXPAND_MS = 500
 
 const byPagePosition = (a: { position: number; createdAt: number; id: string }, b: typeof a): number =>
@@ -228,7 +237,7 @@ function PageTreeItem({
               selectPage(page.id)
             }}
             onDoubleClick={() => onStartRename(page.id)}
-            className="flex h-full min-w-0 flex-1 items-center gap-1.5 py-1 text-left text-sm font-semibold"
+            className="flex h-full min-w-0 flex-1 touch-pan-y items-center gap-1.5 py-1 text-left text-sm font-semibold select-none"
           >
             {page.icon && (
               <span data-page-icon className="shrink-0 text-sm leading-none">
@@ -243,7 +252,7 @@ function PageTreeItem({
           data-page-action="add-child"
           title={t('sidebar.addSubpage')}
           onClick={() => void createPage(page.id)}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
         >
           <Icon name="plus" size={14} />
         </button>
@@ -252,7 +261,7 @@ function PageTreeItem({
           data-page-action="open-menu"
           title={t('sidebar.pageOptions')}
           onClick={openMenu}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
         >
           <Icon name="more" size={14} />
         </button>
@@ -281,7 +290,15 @@ function PageTreeItem({
   )
 }
 
-export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
+export function Sidebar({
+  onOpenSearch,
+  open,
+  onClose
+}: {
+  onOpenSearch: () => void
+  open: boolean
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const pages = usePagesStore((state) => state.pages)
   const createPage = usePagesStore((state) => state.createPage)
@@ -297,11 +314,48 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [drag, setDrag] = useState<PageDragState | null>(null)
+  const isMobile = useIsMobile()
+  const asideRef = useRef<HTMLElement>(null)
   const pendingDragRef = useRef<PendingPageDrag | null>(null)
+  const pendingTouchRef = useRef<PendingPageDrag | null>(null)
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragRef = useRef<PageDragState | null>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const suppressClickRef = useRef(false)
   const tree = useMemo(() => buildPageTree(pages), [pages])
+
+  /* En móvil el drawer cerrado sale del orden de tabulación y del árbol
+     accesible; en escritorio el sidebar siempre está visible. */
+  useEffect(() => {
+    const element = asideRef.current
+    if (!element) return
+    if (isMobile && !open) {
+      element.setAttribute('inert', '')
+      element.setAttribute('aria-hidden', 'true')
+    } else {
+      element.removeAttribute('inert')
+      element.removeAttribute('aria-hidden')
+    }
+  }, [isMobile, open])
+
+  /* Arrastrar hacia la izquierda sobre el drawer lo cierra. */
+  const closeSwipe = useHorizontalSwipe((direction) => {
+    if (direction !== 'left') return
+    if (dragRef.current || pendingDragRef.current || pendingTouchRef.current) return
+    onClose()
+  })
+
+  const cancelArm = useCallback(() => {
+    if (armTimerRef.current !== null) {
+      clearTimeout(armTimerRef.current)
+      armTimerRef.current = null
+    }
+    pendingTouchRef.current = null
+  }, [])
+
+  const blockScroll = useCallback((event: TouchEvent) => {
+    event.preventDefault()
+  }, [])
 
   useEffect(() => {
     const clearExpandTimer = (): void => {
@@ -313,16 +367,24 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
 
     const endDrag = (): void => {
       clearExpandTimer()
+      document.removeEventListener('touchmove', blockScroll)
       document.body.classList.remove('select-none', 'cursor-grabbing')
     }
 
     const onMove = (event: PointerEvent) => {
       const pending = pendingDragRef.current
-      if (!pending) return
-      if (
-        !dragRef.current &&
-        Math.hypot(event.clientX - pending.x, event.clientY - pending.y) < DRAG_THRESHOLD_PX
-      ) {
+      if (pending && pending.pointerId !== event.pointerId) return
+      if (!pending) {
+        const touch = pendingTouchRef.current
+        if (touch && touch.pointerId === event.pointerId) {
+          if (Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > TOUCH_CANCEL_PX) {
+            cancelArm()
+          }
+        }
+        return
+      }
+      const threshold = pending.byTouch ? TOUCH_DRAG_THRESHOLD_PX : DRAG_THRESHOLD_PX
+      if (!dragRef.current && Math.hypot(event.clientX - pending.x, event.clientY - pending.y) < threshold) {
         return
       }
       if (!dragRef.current) {
@@ -364,66 +426,114 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
     }
 
     const onUp = () => {
+      const touch = pendingTouchRef.current
       const pending = pendingDragRef.current
+      cancelArm()
       pendingDragRef.current = null
       const active = dragRef.current
       dragRef.current = null
       endDrag()
       setDrag(null)
-      if (!pending || !active) return
+      if (!pending && !touch) return
+      if (!active) {
+        /* Solo el long-press táctil armado (sin arrastre) abre el menú:
+           un tap normal no debe hacerlo. */
+        const hold = pending?.byTouch ? pending : null
+        if (hold) {
+          setMenu({
+            pageId: hold.pageId,
+            source: hold.target,
+            anchor: rectAnchor(hold.target)
+          })
+        }
+        return
+      }
       window.setTimeout(() => {
         suppressClickRef.current = false
       }, 0)
-      if (!active.overId) return
+      const moved = pending ?? touch
+      if (!moved || !active.overId) return
       const state = usePagesStore.getState()
       const target = state.pages.find((page) => page.id === active.overId)
       if (!target) return
       if (active.zone === 'inside') {
         const count = state.pages.filter(
-          (page) => page.parentId === target.id && page.id !== pending.pageId
+          (page) => page.parentId === target.id && page.id !== moved.pageId
         ).length
-        void state.movePage(pending.pageId, target.id, count)
+        void state.movePage(moved.pageId, target.id, count)
         return
       }
       const siblings = state.pages
-        .filter((page) => page.parentId === target.parentId && page.id !== pending.pageId)
+        .filter((page) => page.parentId === target.parentId && page.id !== moved.pageId)
         .sort(byPagePosition)
       const index = siblings.findIndex((page) => page.id === target.id)
       if (index === -1) return
       void state.movePage(
-        pending.pageId,
+        moved.pageId,
         target.parentId,
         active.zone === 'after' ? index + 1 : index
       )
     }
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      if (!pendingDragRef.current && !dragRef.current) return
-      event.preventDefault()
-      event.stopPropagation()
+    const onCancel = () => {
+      cancelArm()
       pendingDragRef.current = null
       dragRef.current = null
       endDrag()
       setDrag(null)
     }
 
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (!pendingDragRef.current && !pendingTouchRef.current && !dragRef.current) return
+      event.preventDefault()
+      event.stopPropagation()
+      onCancel()
+    }
+
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('pointercancel', onCancel)
     window.addEventListener('keydown', onKeyDown, true)
     return () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointercancel', onCancel)
       window.removeEventListener('keydown', onKeyDown, true)
+      cancelArm()
+      pendingDragRef.current = null
+      dragRef.current = null
       endDrag()
     }
-  }, [])
+  }, [blockScroll, cancelArm])
 
   const handleDragPointerDown = (pageId: string, event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.button !== 0) return
-    pendingDragRef.current = { pageId, x: event.clientX, y: event.clientY }
+    suppressClickRef.current = false
+    const pending: PendingPageDrag = {
+      pageId,
+      x: event.clientX,
+      y: event.clientY,
+      pointerId: event.pointerId,
+      target: event.currentTarget,
+      byTouch: event.pointerType !== 'mouse'
+    }
+    if (!pending.byTouch) {
+      pendingDragRef.current = pending
+      return
+    }
+    cancelArm()
+    pendingTouchRef.current = pending
+    armTimerRef.current = setTimeout(() => {
+      armTimerRef.current = null
+      const held = pendingTouchRef.current
+      if (!held) return
+      pendingTouchRef.current = null
+      pendingDragRef.current = held
+      suppressClickRef.current = true
+      document.body.classList.add('select-none')
+      document.addEventListener('touchmove', blockScroll, { passive: false })
+    }, LONG_PRESS_MS)
   }
   const menuPage = menu ? (pages.find((page) => page.id === menu.pageId) ?? null) : null
   const iconPage = iconFor ? (pages.find((page) => page.id === iconFor.pageId) ?? null) : null
@@ -431,13 +541,30 @@ export function Sidebar({ onOpenSearch }: { onOpenSearch: () => void }) {
   const descendants = confirmPage ? collectDescendantIds(pages, confirmPage.id).length : 0
 
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col border-r border-border bg-panel">
+    <aside
+      ref={asideRef}
+      data-sidebar
+      {...closeSwipe}
+      className={`fixed inset-y-0 left-0 z-40 flex w-[280px] max-w-[85vw] touch-pan-y shrink-0 flex-col border-r border-border bg-panel transition-transform duration-200 md:static md:z-auto md:w-[220px] md:max-w-none md:translate-x-0 md:transition-none ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <div className="px-2.5 pt-2.5">
         <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-hover">
           <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--accent)_22%,transparent)] text-[10px] font-semibold text-accent">
             SY
           </span>
           <span className="flex-1 truncate text-sm font-semibold text-ink">Synapse</span>
+          <button
+            type="button"
+            data-sidebar-close
+            aria-label={t('sidebar.closeSidebar')}
+            title={t('sidebar.closeSidebar')}
+            onClick={onClose}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink md:hidden"
+          >
+            <Icon name="x" size={14} tone="neutral" />
+          </button>
           <Icon name="chev-down" size={15} className="text-muted" />
         </div>
         <button
