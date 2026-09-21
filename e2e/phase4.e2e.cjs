@@ -288,8 +288,8 @@ async function stage3Checkbox(page) {
   const persisted = await state(page)
   check(
     steps,
-    'el autosave guarda checked:true en el content',
-    persisted.blocks.some((block) => block.content === '{"text":"comprar pan","checked":true}'),
+    'el autosave guarda status done en el content',
+    persisted.blocks.some((block) => block.content === '{"text":"comprar pan","status":"done"}'),
     persisted.blocks.map((block) => block.content)
   )
   await shot(page, 'e2e-p4-03-checkbox.png')
@@ -569,7 +569,7 @@ async function stage7Persistence(page) {
     rows[rows.length - 1]
   )
   const persisted = await state(page)
-  check(steps, 'el mock guarda checked tras el reload', persisted.blocks.some((b) => b.content.includes('"checked":true')))
+  check(steps, 'el mock guarda status done tras el reload', persisted.blocks.some((b) => b.content.includes('"status":"done"')))
   await shot(page, 'e2e-p4-07-reload.png')
   return { steps, calls: persisted.calls }
 }

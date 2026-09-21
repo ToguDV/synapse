@@ -1,3 +1,4 @@
+import type { TodoStatus } from '../../../shared/content'
 import type { BlockType } from '../../../shared/types'
 
 export interface EditorBlock {
@@ -5,7 +6,7 @@ export interface EditorBlock {
   type: BlockType
   text: string
   indent: number
-  checked?: boolean
+  status?: TodoStatus
 }
 
 export interface FocusTarget {

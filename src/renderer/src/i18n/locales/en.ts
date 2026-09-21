@@ -94,7 +94,14 @@ export const en = {
       description: 'Checkbox item',
       placeholder: 'To-do',
       keywords: ['todo', 'to-do', 'task', 'checkbox', 'check'],
-      checkboxLabel: 'Mark task'
+      statusLabel: 'Status',
+      status: {
+        backlog: 'Backlog',
+        todo: 'To do',
+        inProgress: 'In progress',
+        done: 'Done',
+        cancelled: 'Cancelled'
+      }
     },
     code: {
       label: 'Code',

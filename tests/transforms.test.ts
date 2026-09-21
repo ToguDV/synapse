@@ -15,7 +15,7 @@ import {
   removeBlock,
   removeBlocks,
   splitBlock,
-  updateChecked,
+  updateStatus,
   updateText
 } from '../src/renderer/src/editor/transforms'
 import type { EditorBlock } from '../src/renderer/src/editor/types'
@@ -241,20 +241,23 @@ describe('bordes adicionales', () => {
   })
 })
 
-describe('updateChecked', () => {
-  it('marca y desmarca sin mutar y devuelve la misma referencia si no cambia', () => {
+describe('updateStatus', () => {
+  it('cambia el estado sin mutar y devuelve la misma referencia si no cambia', () => {
     const blocks = [make('a', 'tarea', { type: 'todo' })]
 
-    const marked = updateChecked(blocks, 'a', true)
-    expect(marked[0].checked).toBe(true)
-    expect(blocks[0].checked).toBeUndefined()
-    expect(updateChecked(marked, 'a', true)).toBe(marked)
-    expect(updateChecked(marked, 'a', false)[0].checked).toBe(false)
+    const done = updateStatus(blocks, 'a', 'done')
+    expect(done[0].status).toBe('done')
+    expect(blocks[0].status).toBeUndefined()
+    expect(updateStatus(done, 'a', 'done')).toBe(done)
+    expect(updateStatus(done, 'a', 'todo')[0].status).toBe('todo')
+    expect(updateStatus(done, 'a', 'in-progress')[0].status).toBe('in-progress')
+    expect(updateStatus(done, 'a', 'cancelled')[0].status).toBe('cancelled')
+    expect(updateStatus(done, 'a', 'backlog')[0].status).toBe('backlog')
   })
 
   it('ignora ids inexistentes', () => {
     const blocks = [make('a', 'tarea', { type: 'todo' })]
-    expect(updateChecked(blocks, 'zz', true)).toBe(blocks)
+    expect(updateStatus(blocks, 'zz', 'done')).toBe(blocks)
   })
 })
 
@@ -283,17 +286,17 @@ describe('removeBlocks', () => {
     expect(removeBlocks(blocks, ['zz']).blocks).toBe(blocks)
   })
 
-  it('splitBlock de un todo crea el nuevo bloque desmarcado', () => {
-    const result = splitBlock([make('a', 'uno', { type: 'todo', checked: true })], 'a', 3, 'b')
+  it('splitBlock de un todo crea el nuevo bloque sin estado', () => {
+    const result = splitBlock([make('a', 'uno', { type: 'todo', status: 'done' })], 'a', 3, 'b')
 
-    expect(result.blocks[1]).toMatchObject({ type: 'todo', checked: false })
+    expect(result.blocks[1]).toMatchObject({ type: 'todo', status: 'todo' })
   })
 })
 
 describe('duplicateBlocks', () => {
-  it('duplica tras el último seleccionado conservando tipo, indent y checked', () => {
+  it('duplica tras el último seleccionado conservando tipo, indent y status', () => {
     const blocks = [
-      make('a', 'uno', { type: 'todo', checked: true }),
+      make('a', 'uno', { type: 'todo', status: 'done' }),
       make('b', 'dos'),
       make('c', 'tres', { indent: 1 })
     ]
@@ -302,7 +305,7 @@ describe('duplicateBlocks', () => {
     const result = duplicateBlocks(blocks, ['a', 'c'], () => `copy-${counter++}`)
 
     expect(result.blocks.map((block) => block.id)).toEqual(['a', 'b', 'c', 'copy-0', 'copy-1'])
-    expect(result.blocks[3]).toMatchObject({ type: 'todo', checked: true, indent: 0 })
+    expect(result.blocks[3]).toMatchObject({ type: 'todo', status: 'done', indent: 0 })
     expect(result.blocks[4]).toMatchObject({ id: 'copy-1', text: 'tres', indent: 1 })
     expect(result.newIds).toEqual(['copy-0', 'copy-1'])
   })
@@ -320,12 +323,12 @@ describe('insertAfter', () => {
     const blocks = [make('a', 'uno'), make('b', 'dos', { indent: 1 })]
 
     const result = insertAfter(blocks, 'a', [
-      { id: 'n1', type: 'todo', checked: false },
+      { id: 'n1', type: 'todo', status: 'todo' },
       { id: 'n2', type: 'divider', indent: 0 }
     ])
 
     expect(result.map((block) => block.id)).toEqual(['a', 'n1', 'n2', 'b'])
-    expect(result[1]).toEqual({ id: 'n1', type: 'todo', text: '', indent: 0, checked: false })
+    expect(result[1]).toEqual({ id: 'n1', type: 'todo', text: '', indent: 0, status: 'todo' })
     expect(result[2]).toEqual({ id: 'n2', type: 'divider', text: '', indent: 0 })
   })
 

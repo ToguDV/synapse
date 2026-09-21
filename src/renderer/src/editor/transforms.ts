@@ -1,3 +1,4 @@
+import type { TodoStatus } from '../../../shared/content'
 import type { BlockType } from '../../../shared/types'
 import { getBlockDefinition } from './registry'
 import type { EditorBlock, TransformResult } from './types'
@@ -41,10 +42,10 @@ export function updateText(blocks: EditorBlock[], id: string, text: string): Edi
   return blocks.map((block) => (block.id === id ? { ...block, text } : block))
 }
 
-export function updateChecked(blocks: EditorBlock[], id: string, checked: boolean): EditorBlock[] {
+export function updateStatus(blocks: EditorBlock[], id: string, status: TodoStatus): EditorBlock[] {
   const found = blockAt(blocks, id)
-  if (!found || (found.block.checked ?? false) === checked) return blocks
-  return blocks.map((block) => (block.id === id ? { ...block, checked } : block))
+  if (!found || (found.block.status ?? 'todo') === status) return blocks
+  return blocks.map((block) => (block.id === id ? { ...block, status } : block))
 }
 
 export function changeType(blocks: EditorBlock[], id: string, type: BlockType): EditorBlock[] {
@@ -71,7 +72,7 @@ export function splitBlock(
     type: getBlockDefinition(block.type).continuation,
     text: block.text.slice(caret),
     indent: block.indent,
-    ...(block.type === 'todo' ? { checked: false } : {})
+    ...(block.type === 'todo' ? { status: 'todo' as TodoStatus } : {})
   })
   return { blocks: next, focus: { blockId: newBlockId, caret: 0 } }
 }
@@ -148,7 +149,7 @@ export interface InsertSpec {
   type: BlockType
   text?: string
   indent?: number
-  checked?: boolean
+  status?: TodoStatus
 }
 
 export function insertAfter(
@@ -163,7 +164,7 @@ export function insertAfter(
     type: spec.type,
     text: spec.text ?? '',
     indent: spec.indent ?? 0,
-    ...(spec.checked === undefined ? {} : { checked: spec.checked })
+    ...(spec.status === undefined ? {} : { status: spec.status })
   }))
   const next = [...blocks]
   next.splice(index + 1, 0, ...created)

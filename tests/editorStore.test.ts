@@ -560,7 +560,7 @@ describe('editorStore · setText sin cambios reales', () => {
   })
 })
 
-describe('editorStore · markdown y checked', () => {
+describe('editorStore · markdown y status', () => {
   it('applyInput convierte "# " en heading y quita el disparador', async () => {
     const { blocks } = installApi([makeBlock({ id: 'a', content: '{"text":""}' })])
     await load()
@@ -631,23 +631,23 @@ describe('editorStore · markdown y checked', () => {
     expect(state().blocks[0].text).toBe('```')
   })
 
-  it('toggleChecked actualiza, persiste y se deshace', async () => {
+  it('toggleDone actualiza, persiste y se deshace', async () => {
     const { blocks } = installApi([
       makeBlock({ id: 'a', type: 'todo', content: '{"text":"tarea"}' })
     ])
     await load()
 
-    state().toggleChecked('a')
-    expect(state().blocks[0].checked).toBe(true)
+    state().toggleDone('a')
+    expect(state().blocks[0].status).toBe('done')
 
     await advance()
     expect(blocks.update).toHaveBeenCalledWith(
       'a',
-      expect.objectContaining({ content: '{"text":"tarea","checked":true}' })
+      expect.objectContaining({ content: '{"text":"tarea","status":"done"}' })
     )
 
     state().undo()
-    expect(state().blocks[0].checked).toBeUndefined()
+    expect(state().blocks[0].status).toBe('todo')
 
     await advance()
     expect(blocks.update).toHaveBeenLastCalledWith(
@@ -656,15 +656,56 @@ describe('editorStore · markdown y checked', () => {
     )
   })
 
-  it('carga checked desde el content JSON', async () => {
+  it('toggleDone trata cualquier estado distinto de done como pendiente', async () => {
+    installApi([makeBlock({ id: 'a', type: 'todo', content: '{"text":"tarea"}' })])
+    await load()
+
+    state().setStatus('a', 'in-progress')
+    state().toggleDone('a')
+    expect(state().blocks[0].status).toBe('done')
+
+    state().setStatus('a', 'cancelled')
+    expect(state().blocks[0].status).toBe('cancelled')
+    state().toggleDone('a')
+    expect(state().blocks[0].status).toBe('done')
+  })
+
+  it('setStatus persiste el estado elegido y no repite si no cambia', async () => {
+    const { blocks } = installApi([makeBlock({ id: 'a', type: 'todo', content: '{"text":"t"}' })])
+    await load()
+
+    state().setStatus('a', 'backlog')
+    expect(state().blocks[0].status).toBe('backlog')
+
+    const history = state().past.length
+    state().setStatus('a', 'backlog')
+    expect(state().past.length).toBe(history)
+
+    await advance()
+    expect(blocks.update).toHaveBeenCalledWith(
+      'a',
+      expect.objectContaining({ content: '{"text":"t","status":"backlog"}' })
+    )
+  })
+
+  it('carga el status desde el content JSON y traduce el checked antiguo', async () => {
     installApi([
       makeBlock({ id: 'a', type: 'todo', content: '{"text":"tarea","checked":true}' }),
-      makeBlock({ id: 'b', type: 'todo', content: '{"text":"otra"}', position: 1 })
+      makeBlock({ id: 'b', type: 'todo', content: '{"text":"otra"}', position: 1 }),
+      makeBlock({
+        id: 'c',
+        type: 'todo',
+        content: '{"text":"en curso","status":"in-progress"}',
+        position: 2
+      }),
+      makeBlock({ id: 'd', type: 'paragraph', content: '{"text":"nota"}', position: 3 })
     ])
     await load()
 
-    expect(state().blocks[0].checked).toBe(true)
-    expect(state().blocks[1].checked).toBeUndefined()
+    expect(state().blocks[0].status).toBe('done')
+    expect(state().blocks[1].status).toBe('todo')
+    expect(state().blocks[2].status).toBe('in-progress')
+    expect(state().blocks[3].status).toBeUndefined()
   })
 })
 
@@ -687,7 +728,7 @@ describe('editorStore · slash y conversión', () => {
     state().applySlashCommand('a', 'todo')
 
     expect(state().blocks.map((block) => block.type)).toEqual(['paragraph', 'todo'])
-    expect(state().blocks[1]).toMatchObject({ text: '', indent: 1, checked: false })
+    expect(state().blocks[1]).toMatchObject({ text: '', indent: 1, status: 'todo' })
     expect(state().focusRequest).toMatchObject({ blockId: state().blocks[1].id, caret: 0 })
   })
 

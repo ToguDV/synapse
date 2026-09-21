@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { TodoStatus } from '../../../shared/content'
 import type { BlockType } from '../../../shared/types'
 import { matchInputRule } from './commands'
 import { parseBlockContent, serializeContent } from './content'
@@ -48,7 +49,8 @@ export interface EditorState {
   consumeFocus: () => void
   setText: (id: string, text: string) => void
   applyInput: (id: string, text: string) => void
-  toggleChecked: (id: string) => void
+  toggleDone: (id: string) => void
+  setStatus: (id: string, status: TodoStatus) => void
   splitAt: (id: string, offset: number) => void
   mergeBackward: (id: string) => void
   mergeForward: (id: string) => void
@@ -188,7 +190,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
             type: row.type,
             text: parsed.text,
             indent: row.indent,
-            ...(parsed.checked ? { checked: true } : {})
+            ...(row.type === 'todo' ? { status: parsed.status } : {})
           }
         }),
         loading: false
@@ -247,7 +249,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         }
         for (let index = 0; index < blocks.length; index++) {
           const block = blocks[index]
-          const content = serializeContent(block.text, block.checked ?? false)
+          const content = serializeContent(block.text, block.status ?? 'todo')
           const stored = persisted.get(block.id)
           if (!stored) {
             await window.api.blocks.create({
@@ -357,15 +359,19 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return
       }
       let blocks = tx.changeType(sameType, id, rule.type)
-      if (rule.type === 'todo') blocks = tx.updateChecked(blocks, id, false)
+      if (rule.type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
       blocks = tx.updateText(blocks, id, rule.text)
       commit(blocks, { blockId: id, caret: rule.text.length })
     },
 
-    toggleChecked: (id) => {
+    toggleDone: (id) => {
       const found = tx.blockAt(get().blocks, id)
       if (!found) return
-      const blocks = tx.updateChecked(get().blocks, id, !(found.block.checked ?? false))
+      get().setStatus(id, (found.block.status ?? 'todo') === 'done' ? 'todo' : 'done')
+    },
+
+    setStatus: (id, status) => {
+      const blocks = tx.updateStatus(get().blocks, id, status)
       if (blocks === get().blocks) return
       clearSelection()
       pushHistory()
@@ -477,7 +483,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return
       }
       let blocks = tx.changeType(get().blocks, id, type)
-      if (type === 'todo') blocks = tx.updateChecked(blocks, id, false)
+      if (type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
       commit(blocks, { blockId: id, caret: found.block.text.length })
     },
 
@@ -508,7 +514,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
       if (inPlace) {
         let blocks = tx.changeType(get().blocks, id, type)
-        if (type === 'todo') blocks = tx.updateChecked(blocks, id, false)
+        if (type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
         commit(blocks, { blockId: id, caret: 0 })
         return
       }
@@ -518,7 +524,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
           id: newBlockId,
           type,
           indent: block.indent,
-          ...(type === 'todo' ? { checked: false } : {})
+          ...(type === 'todo' ? { status: 'todo' as const } : {})
         }
       ])
       commit(blocks, { blockId: newBlockId, caret: 0 })

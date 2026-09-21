@@ -74,23 +74,39 @@ describe('filterSlashCommands', () => {
   })
 })
 
-describe('content con checked', () => {
-  it('serializa solo el texto cuando la tarea no está marcada', () => {
+describe('content con status', () => {
+  it('serializa solo el texto cuando el estado es todo', () => {
     expect(serializeContent('hola')).toBe('{"text":"hola"}')
-    expect(serializeContent('hola', false)).toBe('{"text":"hola"}')
+    expect(serializeContent('hola', 'todo')).toBe('{"text":"hola"}')
   })
 
-  it('serializa checked true y lo vuelve a parsear', () => {
-    const raw = serializeContent('tarea', true)
-    expect(raw).toBe('{"text":"tarea","checked":true}')
-    expect(parseBlockContent(raw)).toEqual({ text: 'tarea', checked: true })
+  it('serializa estados no por defecto y los vuelve a parsear', () => {
+    const raw = serializeContent('tarea', 'done')
+    expect(raw).toBe('{"text":"tarea","status":"done"}')
+    expect(parseBlockContent(raw)).toEqual({ text: 'tarea', status: 'done' })
+    expect(parseBlockContent(serializeContent('t', 'in-progress'))).toEqual({
+      text: 't',
+      status: 'in-progress'
+    })
   })
 
-  it('mantiene compatibilidad con contenido antiguo y corrupto', () => {
-    expect(parseBlockContent('{"text":"viejo"}')).toEqual({ text: 'viejo', checked: false })
+  it('traduce el contenido antiguo con checked al estado equivalente', () => {
+    expect(parseBlockContent('{"text":"viejo"}')).toEqual({ text: 'viejo', status: 'todo' })
+    expect(parseBlockContent('{"text":"viejo","checked":true}')).toEqual({
+      text: 'viejo',
+      status: 'done'
+    })
+    expect(parseBlockContent('{"text":"viejo","checked":false}')).toEqual({
+      text: 'viejo',
+      status: 'todo'
+    })
+  })
+
+  it('mantiene compatibilidad con contenido corrupto o inválido', () => {
     expect(parseContent('{"text":"viejo"}')).toBe('viejo')
-    expect(parseBlockContent('no-json')).toEqual({ text: '', checked: false })
-    expect(parseBlockContent('{"checked":true}')).toEqual({ text: '', checked: false })
-    expect(parseBlockContent('{"text":1}')).toEqual({ text: '', checked: false })
+    expect(parseBlockContent('no-json')).toEqual({ text: '', status: 'todo' })
+    expect(parseBlockContent('{"checked":true}')).toEqual({ text: '', status: 'todo' })
+    expect(parseBlockContent('{"text":1}')).toEqual({ text: '', status: 'todo' })
+    expect(parseBlockContent('{"text":"x","status":"nope"}')).toEqual({ text: 'x', status: 'todo' })
   })
 })

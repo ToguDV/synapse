@@ -55,6 +55,7 @@ const dom = (page) =>
         text: editable ? readPlainText(editable) : '',
         marginLeft: row.style.marginLeft,
         checked: row.getAttribute('data-checked'),
+        status: row.getAttribute('data-status'),
         selected: row.getAttribute('data-selected') === 'true'
       }
     })
@@ -729,8 +730,8 @@ async function stageC(page) {
   let persisted = await state(page)
   check(
     steps,
-    'C3a autosave guarda checked:true',
-    persisted.blocks[0].content === '{"text":"persistente","checked":true}',
+    'C3a autosave guarda status done',
+    persisted.blocks[0].content === '{"text":"persistente","status":"done"}',
     persisted.blocks[0].content
   )
   await page.reload()
@@ -744,7 +745,7 @@ async function stageC(page) {
   persisted = await state(page)
   check(
     steps,
-    'C3c al desmarcar no queda "checked" en el content',
+    'C3c al desmarcar no queda "status" en el content',
     persisted.blocks[0].content === '{"text":"persistente"}',
     persisted.blocks[0].content
   )
@@ -753,6 +754,102 @@ async function stageC(page) {
   await settle(page, 300)
   rows = await dom(page)
   check(steps, 'C3d desmarcado sobrevive al reload', rows[0].checked === 'false', rows[0])
+
+  // C4 · selector de los 5 estados (clic derecho y teclado)
+  await seed(page, [makeBlock(0, 'todo', 'tarea')])
+  checkbox = page.locator('[data-row-id]').nth(0).locator('[data-todo-checkbox]')
+  const openStatusMenu = async (via) => {
+    if (via === 'keyboard') {
+      await checkbox.focus()
+      await page.keyboard.press('Shift+F10')
+    } else {
+      await checkbox.click({ button: 'right' })
+    }
+    await page.waitForSelector('[data-status-menu]', { timeout: 3000 }).catch(() => {})
+    return (await page.locator('[data-status-menu]').count()) > 0
+  }
+  const statusMenuOpen = await openStatusMenu('mouse')
+  const statusOptions = statusMenuOpen
+    ? await page.$$eval('[data-status-option]', (elements) =>
+        elements.map((element) => element.getAttribute('data-status-option'))
+      )
+    : []
+  check(
+    steps,
+    'C4a clic derecho abre el selector con los 5 estados',
+    statusMenuOpen && statusOptions.join(',') === 'backlog,todo,in-progress,done,cancelled',
+    statusOptions
+  )
+  if (statusMenuOpen) {
+    await page.click('[data-status-option="in-progress"]')
+    await settle(page)
+    rows = await dom(page)
+    const statusBox = await page.getAttribute('[data-row-id] [data-status-box]', 'data-status-box')
+    check(
+      steps,
+      'C4b elegir In progress actualiza el bloque sin marcarlo done',
+      rows[0].status === 'in-progress' && rows[0].checked === 'false' && statusBox === 'in-progress',
+      { status: rows[0].status, checked: rows[0].checked, statusBox }
+    )
+    await advanceAutosave(page)
+    const persistedStatus = await state(page)
+    check(
+      steps,
+      'C4c autosave persiste status in-progress',
+      persistedStatus.blocks[0].content === '{"text":"tarea","status":"in-progress"}',
+      persistedStatus.blocks[0].content
+    )
+
+    await checkbox.click()
+    await settle(page)
+    rows = await dom(page)
+    check(
+      steps,
+      'C4d click sobre In progress lo pasa a done',
+      rows[0].status === 'done' && rows[0].checked === 'true',
+      rows[0]
+    )
+
+    await openStatusMenu('mouse')
+    await page.click('[data-status-option="cancelled"]')
+    await settle(page)
+    rows = await dom(page)
+    const cancelledLine = await page.$eval('[data-row-id] div[contenteditable]', (element) =>
+      element.className.includes('line-through')
+    )
+    check(
+      steps,
+      'C4e Cancelled aplica data-status y line-through',
+      rows[0].status === 'cancelled' && rows[0].checked === 'false' && cancelledLine,
+      { status: rows[0].status, cancelledLine }
+    )
+
+    await openStatusMenu('mouse')
+    await page.keyboard.press('Escape')
+    await settle(page)
+    const closed = (await page.locator('[data-status-menu]').count()) === 0
+    rows = await dom(page)
+    check(
+      steps,
+      'C4f Escape cierra el selector sin cambiar el estado',
+      closed && rows[0].status === 'cancelled',
+      { closed, status: rows[0].status }
+    )
+
+    const keyboardMenu = await openStatusMenu('keyboard')
+    check(steps, 'C4g Shift+F10 abre el selector por teclado', keyboardMenu)
+    if (keyboardMenu) {
+      await page.click('[data-status-option="backlog"]')
+      await settle(page)
+      rows = await dom(page)
+      check(
+        steps,
+        'C4h elegir Backlog deja el bloque pendiente',
+        rows[0].status === 'backlog' && rows[0].checked === 'false',
+        rows[0]
+      )
+    }
+  }
   return { steps }
 }
 
@@ -1062,22 +1159,22 @@ async function stageF(page) {
   const todoContent = persisted.blocks.find((b) => b.id === 'seed-1').content
   check(
     steps,
-    'F1c editar todo legado persiste sin "checked"',
+    'F1c editar todo legado persiste sin "status"',
     todoContent === '{"text":"tarea!"}',
     todoContent
   )
 
-  // F2 · checked solo cuando true
+  // F2 · status solo cuando no es "todo"
   await seed(page, [makeBlock(0, 'todo', 'x', { content: '{"text":"x","checked":true}' })])
   rows = await dom(page)
-  check(steps, 'F2a content con checked:true carga marcado', rows[0].checked === 'true', rows[0])
+  check(steps, 'F2a content con checked:true carga como done', rows[0].checked === 'true', rows[0])
   const checkbox = page.locator('[data-row-id]').nth(0).locator('[data-todo-checkbox]')
   await checkbox.click()
   await advanceAutosave(page)
   persisted = await state(page)
   check(
     steps,
-    'F2b desmarcar persiste sin clave checked',
+    'F2b desmarcar persiste sin clave status',
     persisted.blocks[0].content === '{"text":"x"}',
     persisted.blocks[0].content
   )
@@ -1086,8 +1183,8 @@ async function stageF(page) {
   persisted = await state(page)
   check(
     steps,
-    'F2c marcar persiste con checked:true',
-    persisted.blocks[0].content === '{"text":"x","checked":true}',
+    'F2c marcar persiste con status done',
+    persisted.blocks[0].content === '{"text":"x","status":"done"}',
     persisted.blocks[0].content
   )
 

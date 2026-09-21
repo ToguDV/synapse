@@ -1,4 +1,6 @@
 import {
+  useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -9,7 +11,9 @@ import { useEditorStore } from '../editor/editorStore'
 import { getBlockDefinition } from '../editor/registry'
 import type { EditorBlock, RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
-import { Icon } from '../ui/Icon'
+import { rectAnchor, rectAnchorIfConnected } from '../ui/rectAnchor'
+import { StatusMenu, TODO_STATUS_LABEL_KEYS } from '../ui/StatusMenu'
+import { TodoStatusBox } from '../ui/TodoStatusBox'
 import { BlockHandle } from './BlockHandle'
 import { EditableText } from './EditableText'
 
@@ -41,14 +45,17 @@ export function BlockRow({
   const focusSibling = useEditorStore((state) => state.focusSibling)
   const deleteBlocks = useEditorStore((state) => state.deleteBlocks)
   const extendSelection = useEditorStore((state) => state.extendSelection)
-  const toggleChecked = useEditorStore((state) => state.toggleChecked)
+  const toggleDone = useEditorStore((state) => state.toggleDone)
+  const setStatus = useEditorStore((state) => state.setStatus)
   const selectBlock = useEditorStore((state) => state.selectBlock)
   const clearSelection = useEditorStore((state) => state.clearSelection)
   const selectedCount = useEditorStore((state) => state.selectedIds.length)
 
   const definition = getBlockDefinition(block.type)
   const { t } = useTranslation()
-  const checked = block.checked ?? false
+  const status = block.status ?? 'todo'
+  const statusRef = useRef<HTMLButtonElement>(null)
+  const [statusMenu, setStatusMenu] = useState<RectAnchor | null>(null)
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
     const element = event.currentTarget
@@ -159,27 +166,54 @@ export function BlockRow({
     prefix = <span className="mt-[11px] h-[5px] w-[5px] shrink-0 rounded-full bg-faint" />
   } else if (block.type === 'todo') {
     prefix = (
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        aria-label={t('blocks.todo.checkboxLabel')}
-        data-todo-checkbox
-        onMouseDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-        onClick={() => toggleChecked(block.id)}
-        className={`mt-[5px] flex h-4 w-4 shrink-0 items-center justify-center rounded border-[1.5px] transition ${
-          checked
-            ? 'border-success bg-success text-canvas'
-            : 'border-faint text-transparent hover:border-muted'
-        }`}
-      >
-        <Icon name="check" size={11} className="text-current" />
-      </button>
+      <>
+        <button
+          ref={statusRef}
+          type="button"
+          role="checkbox"
+          aria-checked={status === 'done'}
+          aria-haspopup="menu"
+          aria-label={`${t('blocks.todo.statusLabel')}: ${t(TODO_STATUS_LABEL_KEYS[status])}`}
+          data-todo-checkbox
+          data-status={status}
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onClick={() => toggleDone(block.id)}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            setStatusMenu(rectAnchor(event.currentTarget))
+          }}
+          className="mt-[5px] shrink-0 rounded"
+        >
+          <TodoStatusBox status={status} />
+        </button>
+        {statusMenu && (
+          <StatusMenu
+            anchor={statusMenu}
+            getAnchor={() => rectAnchorIfConnected(statusRef.current, statusMenu)}
+            current={status}
+            onSelect={(next) => {
+              setStatus(block.id, next)
+              setStatusMenu(null)
+            }}
+            onClose={() => setStatusMenu(null)}
+          />
+        )}
+      </>
     )
   }
+
+  const todoTextClasses =
+    block.type !== 'todo'
+      ? ''
+      : status === 'done'
+        ? 'text-faint line-through'
+        : status === 'cancelled'
+          ? 'text-faintest line-through'
+          : ''
 
   const body = (
     <div className="relative min-w-0 flex-1">
@@ -193,9 +227,7 @@ export function BlockRow({
       <EditableText
         blockId={block.id}
         value={block.text}
-        className={`w-full outline-none ${definition.textClasses} ${
-          block.type === 'todo' && checked ? 'text-faint line-through' : ''
-        }`}
+        className={`w-full outline-none ${definition.textClasses} ${todoTextClasses}`}
         onInput={(text) => applyInput(block.id, text)}
         onKeyDown={handleKeyDown}
         onFocus={() => setActiveBlock(block.id)}
@@ -228,7 +260,8 @@ export function BlockRow({
       data-row-id={block.id}
       data-block-type={block.type}
       data-selected={selected ? 'true' : undefined}
-      data-checked={block.type === 'todo' ? String(checked) : undefined}
+      data-checked={block.type === 'todo' ? String(status === 'done') : undefined}
+      data-status={block.type === 'todo' ? status : undefined}
       onMouseDown={handleMouseDown}
       style={{ marginLeft: block.indent * 24 }}
       className={`group relative rounded-md ${selected ? 'bg-selected shadow-[inset_2px_0_0_var(--accent)]' : ''} ${
