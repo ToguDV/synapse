@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type Database from 'better-sqlite3'
 import type { Page, PageCreateInput, PageMoveInput } from '../../../shared/types'
+import { planPageMove } from '../../../shared/domain'
 
 // Cubierto por tests/persistence.test.ts (better-sqlite3 v13 usa prebuilds N-API,
 // por lo que carga igual bajo Node/vitest y bajo Electron).
@@ -94,16 +95,6 @@ export function createPagesRepo(db: Database.Database) {
 
   const setIcon = (id: string, icon: string | null): Page => write({ ...getOrThrow(id), icon })
 
-  const orderedChildren = (parentId: string | null, excludeId?: string): PageRow[] =>
-    (selectAll.all() as PageRow[])
-      .filter((row) => row.parent_id === parentId && row.id !== excludeId)
-      .sort(
-        (a, b) =>
-          a.position - b.position ||
-          a.created_at - b.created_at ||
-          a.id.localeCompare(b.id)
-      )
-
   const isDescendant = (candidateId: string, ancestorId: string): boolean => {
     const seen = new Set<string>()
     let current: string | null = candidateId
@@ -118,7 +109,8 @@ export function createPagesRepo(db: Database.Database) {
 
   // `position` es un índice de inserción entre los hermanos del padre destino
   // (excluyendo la propia página): se recorta a [0, hermanos] y renumera ambos
-  // padres para que las posiciones queden consecutivas.
+  // padres para que las posiciones queden consecutivas. La semántica vive en
+  // shared/domain.planPageMove; aquí solo se materializa en SQL.
   const move = (id: string, input: PageMoveInput): Page => {
     const page = getOrThrow(id)
     const parentId = input.parentId ?? null
@@ -126,22 +118,11 @@ export function createPagesRepo(db: Database.Database) {
     if (parentId !== null && isDescendant(parentId, id)) {
       throw new Error(`Cannot move page ${id} into its own subtree`)
     }
+    const plan = planPageMove(list(), id, parentId, input.position)
+    if (!plan) throw new Error(`Cannot move page ${id} into its own subtree`)
     const run = db.transaction((): Page => {
-      const oldParentId = page.parentId
-      const siblingIds = orderedChildren(parentId, id).map((row) => row.id)
-      const position = Math.max(0, Math.min(input.position, siblingIds.length))
-      siblingIds.splice(position, 0, id)
-      siblingIds.forEach((siblingId, index) => {
-        if (siblingId === id) return
-        const row = selectById.get(siblingId) as PageRow
-        if (index !== row.position) updatePosition.run(index, siblingId)
-      })
-      if (oldParentId !== parentId) {
-        orderedChildren(oldParentId, id).forEach((row, index) => {
-          if (index !== row.position) updatePosition.run(index, row.id)
-        })
-      }
-      return write({ ...page, parentId, position })
+      for (const [pageId, position] of plan.updates) updatePosition.run(position, pageId)
+      return write({ ...page, parentId: plan.parentId, position: plan.position })
     })
     return run()
   }

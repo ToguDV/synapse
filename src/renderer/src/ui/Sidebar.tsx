@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import type { ThemePreference } from '../../../shared/theme'
+import { comparePageOrder } from '../../../shared/domain'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation, type MessageKey } from '../i18n'
 import { usePagesStore } from '../store/pagesStore'
@@ -52,9 +53,6 @@ const TOUCH_DRAG_THRESHOLD_PX = 8
 const TOUCH_CANCEL_PX = 8
 const LONG_PRESS_MS = 450
 const AUTO_EXPAND_MS = 500
-
-const byPagePosition = (a: { position: number; createdAt: number; id: string }, b: typeof a): number =>
-  a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
 
 const THEME_META: Record<ThemePreference, { icon: IconName; labelKey: MessageKey }> = {
   system: { icon: 'monitor', labelKey: 'theme.system' },
@@ -465,7 +463,7 @@ export function Sidebar({
       }
       const siblings = state.pages
         .filter((page) => page.parentId === target.parentId && page.id !== moved.pageId)
-        .sort(byPagePosition)
+        .sort(comparePageOrder)
       const index = siblings.findIndex((page) => page.id === target.id)
       if (index === -1) return
       void state.movePage(

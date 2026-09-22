@@ -1,12 +1,14 @@
 import type { Page } from '../../../shared/types'
+import { collectDescendantIds, comparePageOrder, planPageMove } from '../../../shared/domain'
+
+// collectDescendantIds y el orden de hermanos viven en shared/domain (fuente
+// única compartida con el repositorio y la réplica del mock).
+export { collectDescendantIds }
 
 export interface PageNode {
   page: Page
   children: PageNode[]
 }
-
-const byPosition = (a: Page, b: Page): number =>
-  a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
 
 function createsCycle(byId: Map<string, Page>, page: Page): boolean {
   const seen = new Set([page.id])
@@ -32,7 +34,7 @@ export function buildPageTree(pages: Page[]): PageNode[] {
     else roots.push(node)
   }
   const sortNodes = (list: PageNode[]): void => {
-    list.sort((a, b) => byPosition(a.page, b.page))
+    list.sort((a, b) => comparePageOrder(a.page, b.page))
     for (const node of list) sortNodes(node.children)
   }
   sortNodes(roots)
@@ -67,27 +69,6 @@ export function pageAncestors(pages: Page[], id: string): Page[] {
   return chain
 }
 
-export function collectDescendantIds(pages: Page[], id: string): string[] {
-  const childrenOf = new Map<string, string[]>()
-  for (const page of pages) {
-    if (!page.parentId) continue
-    const list = childrenOf.get(page.parentId)
-    if (list) list.push(page.id)
-    else childrenOf.set(page.parentId, [page.id])
-  }
-  const result: string[] = []
-  const seen = new Set([id])
-  const queue = [...(childrenOf.get(id) ?? [])]
-  while (queue.length > 0) {
-    const next = queue.shift()!
-    if (seen.has(next)) continue
-    seen.add(next)
-    result.push(next)
-    queue.push(...(childrenOf.get(next) ?? []))
-  }
-  return result
-}
-
 // `index` es un índice de inserción entre los hermanos del padre destino
 // (excluyendo la propia página), igual que la semántica del repositorio.
 export function movePage(
@@ -96,33 +77,13 @@ export function movePage(
   parentId: string | null,
   index: number
 ): Page[] {
-  const target = pages.find((page) => page.id === id)
-  if (!target) return pages
-  if (parentId !== null) {
-    if (!pages.some((page) => page.id === parentId)) return pages
-    if (parentId === id || collectDescendantIds(pages, id).includes(parentId)) return pages
-  }
-  const siblingsOf = (pid: string | null): Page[] =>
-    pages.filter((page) => page.parentId === pid && page.id !== id).sort(byPosition)
-  const newSiblings = siblingsOf(parentId)
-  const clamped = Math.max(0, Math.min(index, newSiblings.length))
-  if (target.parentId === parentId) {
-    const currentOrder = pages
-      .filter((page) => page.parentId === parentId)
-      .sort(byPosition)
-    if (currentOrder.findIndex((page) => page.id === id) === clamped) return pages
-  }
-  const targetOrder = [...newSiblings]
-  targetOrder.splice(clamped, 0, target)
-  const positionById = new Map<string, number>()
-  targetOrder.forEach((page, position) => positionById.set(page.id, position))
-  if (target.parentId !== parentId) {
-    siblingsOf(target.parentId).forEach((page, position) => positionById.set(page.id, position))
-  }
-  const moved = { ...target, parentId, position: clamped }
+  const plan = planPageMove(pages, id, parentId, index)
+  if (!plan || plan.noop) return pages
+  const target = pages.find((page) => page.id === id)!
+  const moved = { ...target, parentId: plan.parentId, position: plan.position }
   return pages.map((page) => {
     if (page.id === id) return moved
-    const nextPosition = positionById.get(page.id)
+    const nextPosition = plan.updates.get(page.id)
     if (nextPosition === undefined || nextPosition === page.position) return page
     return { ...page, position: nextPosition }
   })

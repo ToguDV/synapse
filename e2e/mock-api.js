@@ -1,6 +1,14 @@
 // Mock en memoria de window.api para los E2E con Playwright (sin preload de Electron).
 // Persiste en localStorage para sobrevivir a page.reload(), ya que addInitScript
 // se re-ejecuta en cada navegación.
+//
+// El contrato `Api` se implementa aquí como script clásico (addInitScript no
+// resuelve módulos), así que la semántica de dominio vive REPLICADA abajo
+// (comparePageOrder / collectDescendantIds / likeFold): es una copia fiel de
+// src/shared/domain.ts y del comportamiento SQLite de los repositorios
+// (substrings con LIKE, plegado ASCII de mayúsculas). Cualquier cambio de
+// semántica en la app debe reflejarse aquí: tests/mockFidelity.test.ts pina
+// mock ↔ repositorio para detectar divergencias en `npm test`.
 ;(() => {
   const KEY = '__synapse_e2e_mock__'
   let stored = null
@@ -49,6 +57,58 @@
     }
   }
 
+  // ---- Réplica de src/shared/domain.ts (pinned por tests/mockFidelity.test.ts) ----
+  const comparePageOrder = (a, b) =>
+    a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
+
+  const collectDescendantIds = (pages, id) => {
+    const childrenOf = new Map()
+    for (const page of pages) {
+      if (!page.parentId) continue
+      const list = childrenOf.get(page.parentId)
+      if (list) list.push(page.id)
+      else childrenOf.set(page.parentId, [page.id])
+    }
+    const result = []
+    const seen = new Set([id])
+    const queue = [...(childrenOf.get(id) ?? [])]
+    while (queue.length > 0) {
+      const next = queue.shift()
+      if (seen.has(next)) continue
+      seen.add(next)
+      result.push(next)
+      queue.push(...(childrenOf.get(next) ?? []))
+    }
+    return result
+  }
+
+  // Plegado solo-ASCII de mayúsculas, igual que LIKE en SQLite (los acentos
+  // NO se pliegan: 'Canción' no encuentra 'CANCIÓN').
+  const likeFold = (value) => String(value).replace(/[A-Z]/g, (c) => c.toLowerCase())
+  // ---- Fin de la réplica ----
+
+  // Id sin colisiones aunque se eliminen filas (los índices descendentes).
+  const nextId = (list, prefix) => {
+    let max = 0
+    for (const item of list) {
+      const raw = String(item.id)
+      const suffix = parseInt(raw.slice(prefix.length), 10)
+      if (raw.startsWith(prefix) && Number.isFinite(suffix) && suffix > max) max = suffix
+    }
+    return prefix + (max + 1)
+  }
+
+  const pageOrThrow = (id) => {
+    const page = pages.find((x) => x.id === id)
+    if (!page) throw new Error(`Page not found: ${id}`)
+    return page
+  }
+  const blockOrThrow = (id) => {
+    const block = blocks.find((x) => x.id === id)
+    if (!block) throw new Error(`Block not found: ${id}`)
+    return block
+  }
+
   const blockText = (content) => {
     try {
       const parsed = JSON.parse(content)
@@ -68,12 +128,8 @@
       get: async (id) => pages.find((p) => p.id === id) ?? null,
       create: async (input = {}) => {
         const parentId = input.parentId ?? null
-        const maxId = pages.reduce(
-          (max, p) => Math.max(max, parseInt(p.id.replace(/^\D+/, ''), 10) || 0),
-          0
-        )
         const p = {
-          id: 'p' + (maxId + 1),
+          id: nextId(pages, 'p'),
           title: input.title ?? '',
           parentId,
           icon: null,
@@ -87,29 +143,36 @@
         return { ...p }
       },
       rename: async (id, title) => {
-        const p = pages.find((x) => x.id === id)
+        const p = pageOrThrow(id)
         p.title = title
         calls.push(['page-rename', id, title])
         persist()
         return { ...p }
       },
       setIcon: async (id, icon) => {
-        const p = pages.find((x) => x.id === id)
+        const p = pageOrThrow(id)
         p.icon = icon
         calls.push(['page-set-icon', id, icon])
         persist()
         return { ...p }
       },
       move: async (id, input) => {
-        const p = pages.find((x) => x.id === id)
-        if (!p) return null
+        const p = pageOrThrow(id)
+        const parentId = input.parentId ?? null
+        if (parentId !== null && !pages.some((x) => x.id === parentId)) {
+          throw new Error(`Page not found: ${parentId}`)
+        }
+        if (
+          parentId !== null &&
+          (parentId === id || collectDescendantIds(pages, id).includes(parentId))
+        ) {
+          throw new Error(`Cannot move page ${id} into its own subtree`)
+        }
         const previousParent = p.parentId
-        p.parentId = input.parentId
-        const byTree = (a, b) =>
-          a.position - b.position || a.createdAt - b.createdAt || a.id.localeCompare(b.id)
+        p.parentId = parentId
         const siblings = pages
-          .filter((x) => x.parentId === p.parentId && x.id !== id)
-          .sort(byTree)
+          .filter((x) => x.parentId === parentId && x.id !== id)
+          .sort(comparePageOrder)
         const index = Math.max(0, Math.min(input.position, siblings.length))
         siblings.splice(index, 0, p)
         siblings.forEach((x, i) => {
@@ -118,27 +181,19 @@
         if (previousParent !== p.parentId) {
           pages
             .filter((x) => x.parentId === previousParent)
-            .sort(byTree)
+            .sort(comparePageOrder)
             .forEach((x, i) => {
               x.position = i
             })
         }
-        calls.push(['page-move', id, input.parentId, index])
+        calls.push(['page-move', id, parentId, index])
         persist()
         return { ...p }
       },
       remove: async (id) => {
-        const doomed = new Set([id])
-        let added = true
-        while (added) {
-          added = false
-          for (const p of pages) {
-            if (p.parentId && doomed.has(p.parentId) && !doomed.has(p.id)) {
-              doomed.add(p.id)
-              added = true
-            }
-          }
-        }
+        // El repositorio delega el borrado en FK ON DELETE CASCADE: para un id
+        // inexistente es un no-op silencioso (no lanza).
+        const doomed = new Set([id, ...collectDescendantIds(pages, id)])
         for (let i = pages.length - 1; i >= 0; i--) {
           if (doomed.has(pages[i].id)) pages.splice(i, 1)
         }
@@ -154,13 +209,13 @@
         calls.push(['list', pageId])
         return blocks
           .filter((b) => b.pageId === pageId)
-          .sort((a, b) => a.position - b.position)
+          .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
           .map((b) => ({ ...b }))
       },
       create: async (input) => {
         calls.push(['create', input])
         const b = {
-          id: input.id ?? 'b' + blocks.length,
+          id: input.id ?? nextId(blocks, 'b'),
           pageId: input.pageId,
           type: input.type ?? 'paragraph',
           content: input.content ?? '{"text":""}',
@@ -175,15 +230,17 @@
       },
       update: async (id, patch) => {
         calls.push(['update', id, patch])
-        const b = blocks.find((x) => x.id === id)
-        Object.assign(b, patch)
+        const b = blockOrThrow(id)
+        if (patch.type !== undefined) b.type = patch.type
+        if (patch.content !== undefined) b.content = patch.content
+        if (patch.indent !== undefined) b.indent = patch.indent
         persist()
         return { ...b }
       },
       reorder: async (pageId, ids) => {
         calls.push(['reorder', pageId, ids])
         ids.forEach((id, i) => {
-          const b = blocks.find((x) => x.id === id)
+          const b = blocks.find((x) => x.id === id && x.pageId === pageId)
           if (b) b.position = i
         })
         persist()
@@ -202,22 +259,24 @@
     search: {
       query: async (term, limit = 20) => {
         calls.push(['search', term, limit])
-        const needle = String(term).trim().toLowerCase()
+        const needle = likeFold(String(term).trim())
         if (needle === '') return []
         const pageHits = pages
-          .filter((p) => p.title.toLowerCase().includes(needle))
-          .sort((a, b) => b.updatedAt - a.updatedAt || a.position - b.position)
+          .filter((p) => likeFold(p.title).includes(needle))
+          .sort(
+            (a, b) => b.updatedAt - a.updatedAt || a.position - b.position || a.createdAt - b.createdAt
+          )
           .slice(0, limit)
           .map((p) => ({
             kind: 'page',
             pageId: p.id,
             title: p.title,
-            icon: p.icon,
+            icon: p.icon ?? null,
             updatedAt: p.updatedAt
           }))
         const blockHits = blocks
           .map((b) => ({ b, p: pages.find((x) => x.id === b.pageId) }))
-          .filter(({ b, p }) => p && blockText(b.content).toLowerCase().includes(needle))
+          .filter(({ b, p }) => p && likeFold(blockText(b.content)).includes(needle))
           .sort((x, y) => y.b.updatedAt - x.b.updatedAt || x.b.position - y.b.position)
           .slice(0, limit)
           .map(({ b, p }) => ({
@@ -225,8 +284,8 @@
             blockId: b.id,
             pageId: p.id,
             pageTitle: p.title,
-            pageIcon: p.icon,
-            blockType: b.type,
+            pageIcon: p.icon ?? null,
+            blockType: b.type ?? 'paragraph',
             text: blockText(b.content),
             updatedAt: b.updatedAt
           }))

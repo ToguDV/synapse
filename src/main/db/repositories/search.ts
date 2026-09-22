@@ -8,6 +8,10 @@ import type {
 } from '../../../shared/types'
 
 // Cubierto por tests/search.test.ts (mismo prebuild N-API que el resto de repos).
+// El ORDER BY de estas consultas es el contrato de orden de los resultados de
+// búsqueda: e2e/mock-api.js lo replica en JS y tests/mockFidelity.test.ts
+// compara ambas implementaciones. LIKE pliega solo mayúsculas ASCII (la réplica
+// del mock usa el mismo plegado, no toLowerCase completo).
 
 const LIKE_ESCAPE = '\\'
 
