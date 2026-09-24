@@ -116,6 +116,7 @@ beforeEach(() => {
     focusRequest: null,
     selectedIds: [],
     selectionAnchor: null,
+    selectionFocus: null,
     past: [],
     future: []
   })
@@ -461,6 +462,32 @@ describe('editorStore · undo/redo', () => {
     state().redo()
     expect(state().blocks).toHaveLength(2)
     expect(state().blocks.map((block) => block.text)).toEqual(['uno ', 'dos'])
+  })
+
+  it('reemplaza un rango entre bloques como una operación única de undo/redo', async () => {
+    installApi([
+      makeBlock({ id: 'a', content: '{"text":"abcd"}', position: 0 }),
+      makeBlock({ id: 'b', content: '{"text":"efgh"}', position: 1 }),
+      makeBlock({ id: 'c', content: '{"text":"ijkl"}', position: 2 })
+    ])
+    await load()
+    state().selectBlock('b', 'toggle')
+
+    state().replaceTextRange(
+      { start: { blockId: 'a', offset: 1 }, end: { blockId: 'c', offset: 2 } },
+      'X'
+    )
+
+    expect(state().blocks.map((block) => block.text)).toEqual(['aX', '', 'kl'])
+    expect(state().selectedIds).toEqual([])
+    expect(state().focusRequest).toMatchObject({ blockId: 'a', caret: 2 })
+    expect(state().past).toHaveLength(1)
+
+    state().undo()
+    expect(state().blocks.map((block) => block.text)).toEqual(['abcd', 'efgh', 'ijkl'])
+
+    state().redo()
+    expect(state().blocks.map((block) => block.text)).toEqual(['aX', '', 'kl'])
   })
 
   it('un cambio nuevo descarta el futuro', async () => {
@@ -1020,6 +1047,7 @@ describe('editorStore · selección', () => {
     state().selectBlock('c', 'range')
     expect(state().selectedIds).toEqual(['a', 'b', 'c'])
     expect(state().selectionAnchor).toBe('a')
+    expect(state().selectionFocus).toBe('c')
 
     state().selectBlock('c', 'toggle')
     expect(state().selectedIds).toEqual(['a', 'b'])
@@ -1044,6 +1072,25 @@ describe('editorStore · selección', () => {
 
     state().extendSelection('c', 1)
     expect(state().selectedIds).toEqual(['a', 'b', 'c'])
+  })
+
+  it('extiende desde el extremo de un rango con ratón aunque el caret siga en el ancla', async () => {
+    installApi([
+      makeBlock({ id: 'a', position: 0 }),
+      makeBlock({ id: 'b', position: 1 }),
+      makeBlock({ id: 'c', position: 2 }),
+      makeBlock({ id: 'd', position: 3 })
+    ])
+    await load()
+    state().setActiveBlock('a')
+    state().selectBlock('a', 'replace')
+    state().selectBlock('c', 'range')
+
+    state().extendSelection('a', 1)
+
+    expect(state().selectedIds).toEqual(['a', 'b', 'c', 'd'])
+    expect(state().selectionAnchor).toBe('a')
+    expect(state().focusRequest).toMatchObject({ blockId: 'd', caret: 0 })
   })
 
   it('clearSelection limpia selección y ancla', async () => {

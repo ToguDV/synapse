@@ -168,7 +168,13 @@ const selectionInfo = (page) =>
       endOffset: range.endOffset,
       startBlock: blockOf(range.startContainer),
       endBlock: blockOf(range.endContainer),
-      text: sel.toString()
+      text: sel.toString(),
+      rects: [...range.getClientRects()].map((rect) => ({
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height
+      }))
     }
   })
 
@@ -239,6 +245,22 @@ async function pasteText(page, text) {
   }, text)
   await settle(page, 120)
 }
+
+const dispatchClipboard = (page, type) =>
+  page.evaluate((eventType) => {
+    const editable = document.activeElement
+    const clipboard = new DataTransfer()
+    const event = new ClipboardEvent(eventType, {
+      clipboardData: clipboard,
+      bubbles: true,
+      cancelable: true
+    })
+    editable.dispatchEvent(event)
+    return {
+      defaultPrevented: event.defaultPrevented,
+      text: clipboard.getData('text/plain')
+    }
+  }, type)
 
 // ---------------------------------------------------------------------------
 // Resolución de puntos y creación de rangos (réplica de setCaretOffset/offsetAt)
@@ -840,49 +862,53 @@ async function stageO(page) {
   const steps = []
   await setup(page)
 
-  // O1 · arrastre real de bloque 0 a bloque 1: Chromium clampa la selección al
-  // primer contenteditable, así que el pegado solo reemplaza dentro del bloque 0.
+  // O1 · arrastre real de bloque 0 a bloque 1 crea un rango sintético cruzado.
   await seed(page, [
     makeBlock(0, 'paragraph', 'abcd'),
     makeBlock(1, 'paragraph', 'efgh')
   ])
   await dragCrossSelect(page, 0, 1, 1, 2)
   let sel = await selectionInfo(page)
+  const endRowBounds = await page.locator('[data-row-id="seed-1"]').boundingBox()
+  const paintsEndBlock = Boolean(
+    endRowBounds &&
+      sel.rects.some(
+        (rect) => rect.y < endRowBounds.y + endRowBounds.height && rect.y + rect.height > endRowBounds.y
+      )
+  )
   check(
     steps,
-    'O1a el arrastre ratón bloque0→bloque1 se queda clampeado en el bloque 0 ("bcd")',
+    'O1a el arrastre ratón bloque0→bloque1 selecciona ambos bloques',
     sel.collapsed === false &&
       sel.startBlock === 'seed-0' &&
-      sel.endBlock === 'seed-0' &&
-      sel.text === 'bcd',
-    sel
+      sel.endBlock === 'seed-1' &&
+      paintsEndBlock,
+    { selection: sel, paintsEndBlock }
   )
   await pasteText(page, 'X')
   await settle(page, 150)
   let rows = await dom(page)
   check(
     steps,
-    'O1b pegar con esa selección clampeada → ["aX","efgh"]',
-    rows.length === 2 && rows[0].text === 'aX' && rows[1].text === 'efgh',
+    'O1b pegar sobre el rango cruzado → ["aX","gh"]',
+    rows.length === 2 && rows[0].text === 'aX' && rows[1].text === 'gh',
     { rows: rows.map((r) => r.text), selection: sel }
   )
 
-  // O2 · selección cruzada programática [bloque0:1 → bloque1:2] + pegar.
-  // No es alcanzable con ratón ni Ctrl+A, pero expone que insertPlainText solo
-  // resuelve el offset final dentro del bloque de inicio.
+  // O2 · el mismo reemplazo con un rango sintético creado directamente.
   await seed(page, [
     makeBlock(0, 'paragraph', 'abcd'),
     makeBlock(1, 'paragraph', 'efgh')
   ])
   await setCrossRange(page, 0, 1, 1, 2)
   sel = await selectionInfo(page)
-  note(steps, 'O2a selección programática cruzada (no alcanzable por UI)', sel)
+  note(steps, 'O2a selección programática cruzada', sel)
   await pasteText(page, 'X')
   await settle(page, 150)
   rows = await dom(page)
   check(
     steps,
-    'O2 (latente) pegar sobre selección cruzada programática → ["aX","gh"]',
+    'O2 pegar sobre selección cruzada programática → ["aX","gh"]',
     rows.length === 2 && rows[0].text === 'aX' && rows[1].text === 'gh',
     { rows: rows.map((r) => r.text), selection: sel }
   )
@@ -898,7 +924,7 @@ async function stageO(page) {
   rows = await dom(page)
   check(
     steps,
-    'O3 (latente) Backspace sobre selección cruzada borra ambos tramos ["a","gh"]',
+    'O3 Backspace sobre selección cruzada borra ambos tramos ["a","gh"]',
     rows.length === 2 && rows[0].text === 'a' && rows[1].text === 'gh',
     rows.map((r) => r.text)
   )
@@ -914,12 +940,112 @@ async function stageO(page) {
   rows = await dom(page)
   check(
     steps,
-    'O4 (latente) Delete sobre selección cruzada borra ambos tramos ["a","gh"]',
+    'O4 Delete sobre selección cruzada borra ambos tramos ["a","gh"]',
     rows.length === 2 && rows[0].text === 'a' && rows[1].text === 'gh',
     rows.map((r) => r.text)
   )
 
-  // O5 · Enter sobre selección cruzada (observación)
+  // O5 · copy/cut genera su propio text/plain cuando Chromium no expone
+  // clipboardData para un rango que cruza editing hosts.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  await setCrossRange(page, 0, 1, 1, 2)
+  const copied = await dispatchClipboard(page, 'copy')
+  check(
+    steps,
+    'O5 copy publica el texto de ambos bloques en text/plain',
+    copied.defaultPrevented && copied.text === 'bcd\nef',
+    copied
+  )
+
+  await setCrossRange(page, 0, 1, 1, 2)
+  const cut = await dispatchClipboard(page, 'cut')
+  await settle(page, 150)
+  rows = await dom(page)
+  check(
+    steps,
+    'O6 cut copia el rango y elimina ambos tramos',
+    cut.defaultPrevented &&
+      cut.text === 'bcd\nef' &&
+      rows.length === 2 &&
+      rows[0].text === 'a' &&
+      rows[1].text === 'gh',
+    { cut, rows: rows.map((r) => r.text) }
+  )
+  await page.keyboard.press('Control+z')
+  await settle(page, 150)
+  rows = await dom(page)
+  check(
+    steps,
+    'O6b undo revierte el corte en una sola operación',
+    rows.length === 2 && rows[0].text === 'abcd' && rows[1].text === 'efgh',
+    rows.map((r) => r.text)
+  )
+
+  // O7 · Ctrl+A y escritura reemplazan texto en toda la página.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  await clickEditable(page, 0, 'start')
+  await page.keyboard.press('Control+a')
+  sel = await selectionInfo(page)
+  check(
+    steps,
+    'O7a Ctrl+A selecciona desde el primer hasta el último bloque',
+    sel.startBlock === 'seed-0' && sel.endBlock === 'seed-1' && !sel.collapsed,
+    sel
+  )
+  await page.keyboard.insertText('X')
+  await settle(page, 150)
+  rows = await dom(page)
+  check(
+    steps,
+    'O7b escribir sobre Ctrl+A reemplaza el texto de ambos bloques',
+    rows.length === 2 && rows[0].text === 'X' && rows[1].text === '',
+    rows.map((r) => r.text)
+  )
+
+  // O8 · Shift+ArrowDown extiende el caret al siguiente bloque conservando columna.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  await clickEditable(page, 0, 'start')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Shift+ArrowDown')
+  sel = await selectionInfo(page)
+  check(
+    steps,
+    'O8 Shift+ArrowDown crea selección de texto entre bloques',
+    sel.startBlock === 'seed-0' && sel.endBlock === 'seed-1' && !sel.collapsed,
+    sel
+  )
+
+  // O9 · Shift+click extiende desde el caret anterior a otro bloque.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  const startPoint = await pointRect(page, 0, 1)
+  const endPoint = await pointRect(page, 1, 2)
+  await page.mouse.click(startPoint.x, startPoint.y)
+  await page.keyboard.down('Shift')
+  await page.mouse.click(endPoint.x, endPoint.y)
+  await page.keyboard.up('Shift')
+  await settle(page, 100)
+  sel = await selectionInfo(page)
+  check(
+    steps,
+    'O9 Shift+click extiende el rango al segundo bloque',
+    sel.startBlock === 'seed-0' && sel.endBlock === 'seed-1' && !sel.collapsed,
+    sel
+  )
+
+  // O10 · Enter elimina el rango y conserva el separador estructural.
   await seed(page, [
     makeBlock(0, 'paragraph', 'abcd'),
     makeBlock(1, 'paragraph', 'efgh')
@@ -929,16 +1055,128 @@ async function stageO(page) {
   await settle(page, 200)
   rows = await dom(page)
   const focus = await focusedBlock(page)
-  note(steps, 'O5a Enter sobre selección cruzada (observación)', {
-    rows: rows.map((r) => `${r.type}:${JSON.stringify(r.text)}`),
-    focus
-  })
+  check(
+    steps,
+    'O10 Enter elimina ambos tramos y enfoca el texto posterior',
+    rows.length === 2 && rows[0].text === 'a' && rows[1].text === 'gh' && focus === 'seed-1',
+    { rows: rows.map((r) => r.text), focus }
+  )
+
+  // O11 · Shift+Enter sustituye el rango por un salto de línea.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  await setCrossRange(page, 0, 1, 1, 2)
+  await page.keyboard.press('Shift+Enter')
+  await settle(page, 150)
   rows = await dom(page)
   check(
     steps,
-    'O5 Enter sobre selección cruzada no deja texto seleccionado huérfano',
-    rows.length === 2 || rows.length === 3,
+    'O11 Shift+Enter sustituye el rango cruzado por un salto',
+    rows.length === 2 && rows[0].text === 'a\n' && rows[1].text === 'gh',
     rows.map((r) => r.text)
+  )
+
+  // O12 · la flecha vertical sigue la línea visual cuando el texto hace wrap.
+  await page.setViewportSize({ width: 800, height: 800 })
+  await seed(page, [makeBlock(0, 'paragraph', 'word '.repeat(60))])
+  await clickEditable(page, 0, 'start')
+  for (let index = 0; index < 20; index++) await page.keyboard.press('ArrowRight')
+  const anchorOffset = await caretOffset(page)
+  await page.keyboard.press('Shift+ArrowDown')
+  sel = await selectionInfo(page)
+  check(
+    steps,
+    'O12 Shift+ArrowDown selecciona hacia la siguiente línea renderizada',
+    sel.startBlock === 'seed-0' &&
+      sel.endBlock === 'seed-0' &&
+      !sel.collapsed &&
+      sel.focusOffset > anchorOffset,
+    { anchorOffset, selection: sel }
+  )
+  await page.setViewportSize({ width: 1280, height: 800 })
+
+  // O13 · borrar solo el separador lógico une ambos bloques.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh')
+  ])
+  await setCrossRange(page, 0, 4, 1, 0)
+  await page.keyboard.press('Backspace')
+  await settle(page, 150)
+  rows = await dom(page)
+  check(
+    steps,
+    'O13 Backspace sobre el separador de bloques los une',
+    rows.length === 1 && rows[0].id === 'seed-0' && rows[0].text === 'abcdefgh',
+    rows.map((r) => r.text)
+  )
+
+  // O14 · cambiar de selección de texto a selección de bloques colapsa el rango anterior.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh'),
+    makeBlock(2, 'paragraph', 'ijkl')
+  ])
+  await clickEditable(page, 0, 'start')
+  await setCrossRange(page, 0, 1, 1, 2)
+  const whitespaceRow = await page.locator('[data-row-id="seed-1"]').boundingBox()
+  await page.keyboard.down('Shift')
+  await page.mouse.click(
+    whitespaceRow.x + whitespaceRow.width - 24,
+    whitespaceRow.y + whitespaceRow.height / 2
+  )
+  await page.keyboard.up('Shift')
+  await settle(page, 100)
+  rows = await dom(page)
+  sel = await selectionInfo(page)
+  check(
+    steps,
+    'O14a Shift+click en espacio de fila selecciona bloques y colapsa el rango de texto',
+    rows.slice(0, 2).every((row) => row.selected) && !rows[2].selected && sel.collapsed,
+    { selected: rows.map((r) => r.selected), selection: sel }
+  )
+  await page.keyboard.press('Shift+ArrowDown')
+  await settle(page, 100)
+  rows = await dom(page)
+  check(
+    steps,
+    'O14b Shift+Arrow extiende la selección de bloques activa',
+    rows.every((row) => row.selected),
+    rows.map((r) => r.selected)
+  )
+
+  // O15 · Ctrl+Shift+click explícito selecciona bloques incluso sobre texto visible.
+  await seed(page, [
+    makeBlock(0, 'paragraph', 'abcd'),
+    makeBlock(1, 'paragraph', 'efgh'),
+    makeBlock(2, 'paragraph', 'ijkl'),
+    makeBlock(3, 'paragraph', 'mnop')
+  ])
+  await clickEditable(page, 0, 'start')
+  const blockTextPoint = await pointRect(page, 2, 1)
+  await page.keyboard.down('Control')
+  await page.keyboard.down('Shift')
+  await page.mouse.click(blockTextPoint.x, blockTextPoint.y)
+  await page.keyboard.up('Shift')
+  await page.keyboard.up('Control')
+  await settle(page, 100)
+  rows = await dom(page)
+  check(
+    steps,
+    'O15a Ctrl+Shift+click sobre glifo conserva el modo de selección de bloques',
+    rows.slice(0, 3).every((row) => row.selected) && !rows[3].selected,
+    rows.map((r) => r.selected)
+  )
+  await page.keyboard.press('Shift+ArrowDown')
+  await settle(page, 100)
+  rows = await dom(page)
+  check(
+    steps,
+    'O15b Shift+Arrow extiende desde el extremo del rango de bloques',
+    rows.every((row) => row.selected),
+    rows.map((r) => r.selected)
   )
 
   return { steps }

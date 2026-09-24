@@ -1,4 +1,10 @@
-import type { RectAnchor } from './types'
+import type { BlockTextPoint, BlockTextRange, RectAnchor } from './types'
+
+export interface EditableSelection extends BlockTextRange {
+  anchor: BlockTextPoint
+  focus: BlockTextPoint
+  collapsed: boolean
+}
 
 function nodeText(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return (node as Text).data
@@ -125,6 +131,55 @@ function offsetAt(element: HTMLElement, container: Node, containerOffset: number
   return offset
 }
 
+function editableForNode(node: Node | null): HTMLElement | null {
+  if (!node) return null
+  const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement
+  return element?.closest<HTMLElement>('[data-block-id][contenteditable]') ?? null
+}
+
+function editablePoint(node: Node | null, offset: number): BlockTextPoint | null {
+  const element = editableForNode(node)
+  const blockId = element?.dataset.blockId
+  if (!element || !blockId || !node || !element.contains(node) && node !== element) return null
+  return { blockId, offset: offsetAt(element, node, offset) }
+}
+
+function editableById(blockId: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(
+    `[data-block-id="${CSS.escape(blockId)}"][contenteditable]`
+  )
+}
+
+function pointAt(element: HTMLElement, offset: number): { node: Node; offset: number } {
+  let remaining = Math.max(0, Math.min(offset, readPlainText(element).length))
+  const children = [...element.childNodes]
+  for (let index = 0; index < children.length; index++) {
+    if (index > 0) {
+      if (remaining === 0) return { node: children[index], offset: 0 }
+      remaining -= 1
+    }
+    const line = children[index]
+    const length = nodeText(line).length
+    if (remaining <= length) {
+      const point = findPoint(line, remaining)
+      return point ?? { node: line, offset: 0 }
+    }
+    remaining -= length
+  }
+  return { node: element, offset: children.length }
+}
+
+export function getEditableCaretRect(point: BlockTextPoint): DOMRect | null {
+  const element = editableById(point.blockId)
+  if (!element) return null
+  const position = pointAt(element, point.offset)
+  const range = document.createRange()
+  range.setStart(position.node, position.offset)
+  range.collapse(true)
+  const rect = range.getBoundingClientRect()
+  return rect.height > 0 ? rect : null
+}
+
 export function getCaretOffset(element: HTMLElement): number {
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0) return 0
@@ -138,49 +193,116 @@ export function setCaretOffset(element: HTMLElement, offset: number): void {
   const selection = window.getSelection()
   if (!selection) return
   const range = document.createRange()
-  let remaining = Math.max(0, Math.min(offset, readPlainText(element).length))
-  let placed = false
-  const children = [...element.childNodes]
-  for (let index = 0; index < children.length && !placed; index++) {
-    if (index > 0) {
-      if (remaining === 0) {
-        range.setStart(children[index], 0)
-        placed = true
-        break
-      }
-      remaining -= 1
-    }
-    const line = children[index]
-    const length = nodeText(line).length
-    if (remaining <= length) {
-      const point = findPoint(line, remaining)
-      if (point) range.setStart(point.node, point.offset)
-      else range.setStart(line, 0)
-      placed = true
-      break
-    }
-    remaining -= length
-  }
-  if (placed) {
-    range.collapse(true)
-  } else {
-    range.selectNodeContents(element)
-    range.collapse(false)
-  }
+  const point = pointAt(element, offset)
+  range.setStart(point.node, point.offset)
+  range.collapse(true)
   selection.removeAllRanges()
   selection.addRange(range)
+}
+
+export function getEditableSelection(): EditableSelection | null {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0 || !selection.anchorNode || !selection.focusNode) {
+    return null
+  }
+  const range = selection.getRangeAt(0)
+  const anchor = editablePoint(selection.anchorNode, selection.anchorOffset)
+  const focus = editablePoint(selection.focusNode, selection.focusOffset)
+  const start = editablePoint(range.startContainer, range.startOffset)
+  const end = editablePoint(range.endContainer, range.endOffset)
+  if (!anchor || !focus || !start || !end) return null
+  return { anchor, focus, start, end, collapsed: selection.isCollapsed }
+}
+
+export function getEditablePointAt(clientX: number, clientY: number): BlockTextPoint | null {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number
+    ) => { offsetNode: Node; offset: number } | null
+    caretRangeFromPoint?: (x: number, y: number) => Range | null
+  }
+  const position = doc.caretPositionFromPoint?.(clientX, clientY)
+  if (position) return editablePoint(position.offsetNode, position.offset)
+  const range = doc.caretRangeFromPoint?.(clientX, clientY)
+  return range ? editablePoint(range.startContainer, range.startOffset) : null
+}
+
+export function isNearEditableText(clientX: number, clientY: number): boolean {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (
+      x: number,
+      y: number
+    ) => { offsetNode: Node; offset: number } | null
+    caretRangeFromPoint?: (x: number, y: number) => Range | null
+  }
+  const position = doc.caretPositionFromPoint?.(clientX, clientY)
+  const fallback = position ? null : doc.caretRangeFromPoint?.(clientX, clientY)
+  const node = position?.offsetNode ?? fallback?.startContainer ?? null
+  const offset = position?.offset ?? fallback?.startOffset ?? 0
+  const element = editableForNode(node)
+  if (!element || !node) return false
+
+  const range = document.createRange()
+  range.setStart(node, offset)
+  range.collapse(true)
+  const rect = range.getBoundingClientRect()
+  return (
+    rect.height > 0 &&
+    Math.abs(clientX - rect.left) <= 10 &&
+    clientY >= rect.top - 4 &&
+    clientY <= rect.bottom + 4
+  )
+}
+
+export function setEditableSelection(anchor: BlockTextPoint, focus: BlockTextPoint): boolean {
+  const anchorElement = editableById(anchor.blockId)
+  const focusElement = editableById(focus.blockId)
+  const selection = window.getSelection()
+  if (!anchorElement || !focusElement || !selection) return false
+
+  const anchorPoint = pointAt(anchorElement, anchor.offset)
+  const focusPoint = pointAt(focusElement, focus.offset)
+  focusElement.focus()
+  if (typeof selection.setBaseAndExtent === 'function') {
+    selection.setBaseAndExtent(
+      anchorPoint.node,
+      anchorPoint.offset,
+      focusPoint.node,
+      focusPoint.offset
+    )
+    return true
+  }
+
+  const anchorRange = document.createRange()
+  anchorRange.setStart(anchorPoint.node, anchorPoint.offset)
+  anchorRange.collapse(true)
+  const focusRange = document.createRange()
+  focusRange.setStart(focusPoint.node, focusPoint.offset)
+  focusRange.collapse(true)
+  const forward = anchorRange.compareBoundaryPoints(Range.START_TO_START, focusRange) <= 0
+  const range = document.createRange()
+  const start = forward ? anchorPoint : focusPoint
+  const end = forward ? focusPoint : anchorPoint
+  range.setStart(start.node, start.offset)
+  range.setEnd(end.node, end.offset)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
+}
+
+export function collapseEditableSelection(): void {
+  const selection = getEditableSelection()
+  if (!selection || selection.collapsed) return
+  setEditableSelection(selection.focus, selection.focus)
 }
 
 export function insertPlainText(text: string): boolean {
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0) return false
   const range = selection.getRangeAt(0)
-  const start =
-    range.startContainer.nodeType === Node.ELEMENT_NODE
-      ? (range.startContainer as HTMLElement)
-      : range.startContainer.parentElement
-  const element = start?.closest<HTMLElement>('[contenteditable]') ?? null
-  if (!element) return false
+  const element = editableForNode(range.startContainer)
+  if (!element || editableForNode(range.endContainer) !== element) return false
   const startOffset = offsetAt(element, range.startContainer, range.startOffset)
   const endOffset = range.collapsed
     ? startOffset

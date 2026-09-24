@@ -1,7 +1,12 @@
 import type { TodoStatus } from '../../../shared/content'
 import type { BlockType } from '../../../shared/types'
 import { getBlockDefinition } from './registry'
-import type { EditorBlock, TransformResult } from './types'
+import type {
+  BlockTextRange,
+  EditorBlock,
+  TextRangeReplaceOptions,
+  TransformResult
+} from './types'
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
@@ -40,6 +45,111 @@ export function updateText(blocks: EditorBlock[], id: string, text: string): Edi
   const found = blockAt(blocks, id)
   if (!found || found.block.text === text) return blocks
   return blocks.map((block) => (block.id === id ? { ...block, text } : block))
+}
+
+export function readTextRange(blocks: EditorBlock[], range: BlockTextRange): string | null {
+  const start = blockAt(blocks, range.start.blockId)
+  const end = blockAt(blocks, range.end.blockId)
+  if (!start || !end || !isTextualBlock(start.block) || !isTextualBlock(end.block)) return null
+
+  const first = start.index <= end.index ? start : end
+  const last = start.index <= end.index ? end : start
+  const firstOffset = clamp(
+    start.index <= end.index ? range.start.offset : range.end.offset,
+    0,
+    first.block.text.length
+  )
+  const lastOffset = clamp(
+    start.index <= end.index ? range.end.offset : range.start.offset,
+    0,
+    last.block.text.length
+  )
+
+  if (first.index === last.index) {
+    return first.block.text.slice(Math.min(firstOffset, lastOffset), Math.max(firstOffset, lastOffset))
+  }
+
+  const segments: string[] = []
+  for (let index = first.index; index <= last.index; index++) {
+    const block = blocks[index]
+    if (index === first.index) segments.push(block.text.slice(firstOffset))
+    else if (index === last.index) segments.push(block.text.slice(0, lastOffset))
+    else segments.push(block.text)
+  }
+  return segments.join('\n')
+}
+
+export function replaceTextRange(
+  blocks: EditorBlock[],
+  range: BlockTextRange,
+  text: string,
+  options: Pick<TextRangeReplaceOptions, 'preserveBlockBoundary'> = {}
+): TransformResult {
+  const start = blockAt(blocks, range.start.blockId)
+  const end = blockAt(blocks, range.end.blockId)
+  if (!start || !end || !isTextualBlock(start.block) || !isTextualBlock(end.block)) {
+    return { blocks }
+  }
+
+  const forward = start.index <= end.index
+  const first = forward ? start : end
+  const last = forward ? end : start
+  const firstOffset = clamp(
+    forward ? range.start.offset : range.end.offset,
+    0,
+    first.block.text.length
+  )
+  const lastOffset = clamp(
+    forward ? range.end.offset : range.start.offset,
+    0,
+    last.block.text.length
+  )
+  const boundaryOnly =
+    first.index !== last.index &&
+    firstOffset === first.block.text.length &&
+    lastOffset === 0 &&
+    blocks.slice(first.index + 1, last.index).every((block) => block.text === '')
+  if (boundaryOnly && !options.preserveBlockBoundary) {
+    const mergedText = first.block.text + text + last.block.text
+    const merged = { ...first.block, text: mergedText }
+    const next = [...blocks.slice(0, first.index), merged, ...blocks.slice(last.index + 1)]
+    return {
+      blocks: next,
+      focus: { blockId: first.block.id, caret: first.block.text.length + text.length }
+    }
+  }
+  const firstEnd = first.index === last.index ? Math.max(firstOffset, lastOffset) : first.block.text.length
+  const firstStart = first.index === last.index ? Math.min(firstOffset, lastOffset) : firstOffset
+  const nextText =
+    first.block.text.slice(0, firstStart) +
+    text +
+    (first.index === last.index ? first.block.text.slice(firstEnd) : '')
+  let changed = false
+  const next = blocks.map((block, index) => {
+    if (index === first.index) {
+      if (block.text === nextText) return block
+      changed = true
+      return { ...block, text: nextText }
+    }
+    if (first.index < index && index < last.index && isTextualBlock(block) && block.text !== '') {
+      changed = true
+      return { ...block, text: '' }
+    }
+    if (index === last.index && index !== first.index) {
+      const endText = block.text.slice(lastOffset)
+      if (block.text === endText) return block
+      changed = true
+      return { ...block, text: endText }
+    }
+    return block
+  })
+
+  if (!changed) return { blocks, focus: { blockId: first.block.id, caret: firstStart + text.length } }
+
+  return {
+    blocks: next,
+    focus: { blockId: first.block.id, caret: firstStart + text.length }
+  }
 }
 
 export function updateStatus(blocks: EditorBlock[], id: string, status: TodoStatus): EditorBlock[] {

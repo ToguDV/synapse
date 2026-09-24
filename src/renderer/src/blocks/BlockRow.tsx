@@ -6,7 +6,14 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode
 } from 'react'
-import { getCaretAnchor, getCaretOffset, insertPlainText, readPlainText } from '../editor/caret'
+import {
+  collapseEditableSelection,
+  getCaretAnchor,
+  getCaretOffset,
+  getEditableSelection,
+  insertPlainText,
+  readPlainText
+} from '../editor/caret'
 import { useEditorStore } from '../editor/editorStore'
 import { getBlockDefinition } from '../editor/registry'
 import type { EditorBlock, RectAnchor } from '../editor/types'
@@ -65,6 +72,11 @@ export function BlockRow({
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
     const element = event.currentTarget
     const selection = window.getSelection()
+    const editableSelection = getEditableSelection()
+    const crossBlockRange =
+      editableSelection && editableSelection.start.blockId !== editableSelection.end.blockId
+        ? { start: editableSelection.start, end: editableSelection.end }
+        : null
     const collapsed = selection?.isCollapsed ?? true
     const inside = Boolean(
       selection && selection.rangeCount > 0 && element.contains(selection.getRangeAt(0).startContainer)
@@ -87,6 +99,17 @@ export function BlockRow({
         event.preventDefault()
         if (selectedCount > 0) {
           deleteBlocks()
+          return
+        }
+        if (crossBlockRange) {
+          if (definition.softLineBreaks || event.shiftKey) {
+            useEditorStore.getState().replaceTextRange(crossBlockRange, '\n')
+          } else {
+            useEditorStore.getState().replaceTextRange(crossBlockRange, '', {
+              focus: { blockId: crossBlockRange.end.blockId, caret: 0 },
+              preserveBlockBoundary: true
+            })
+          }
           return
         }
         if (definition.softLineBreaks || event.shiftKey) {
@@ -160,6 +183,7 @@ export function BlockRow({
     if (event.button !== 0) return
     if (event.shiftKey) {
       event.preventDefault()
+      collapseEditableSelection()
       selectBlock(block.id, 'range')
       return
     }

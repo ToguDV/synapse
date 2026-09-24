@@ -5,7 +5,12 @@ import { matchInputRule } from './commands'
 import { getBlockDefinition } from './registry'
 import { createPersistence, type PersistenceHooks } from './persistence'
 import * as tx from './transforms'
-import type { EditorBlock, FocusTarget } from './types'
+import type {
+  BlockTextRange,
+  EditorBlock,
+  FocusTarget,
+  TextRangeReplaceOptions
+} from './types'
 
 const TEXT_COALESCE_MS = 600
 const HISTORY_LIMIT = 200
@@ -30,6 +35,7 @@ export interface EditorState {
   focusRequest: FocusRequest | null
   selectedIds: string[]
   selectionAnchor: string | null
+  selectionFocus: string | null
   past: HistoryEntry[]
   future: HistoryEntry[]
   loadPage: (pageId: string) => Promise<void>
@@ -41,6 +47,11 @@ export interface EditorState {
   focusBlock: (pageId: string, blockId: string) => void
   consumeFocus: () => void
   setText: (id: string, text: string) => void
+  replaceTextRange: (
+    range: BlockTextRange,
+    text: string,
+    options?: TextRangeReplaceOptions
+  ) => void
   applyInput: (id: string, text: string) => void
   toggleDone: (id: string) => void
   setStatus: (id: string, status: TodoStatus) => void
@@ -85,8 +96,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
   }
 
   const clearSelection = (): void => {
-    if (get().selectedIds.length > 0 || get().selectionAnchor !== null) {
-      set({ selectedIds: [], selectionAnchor: null })
+    if (
+      get().selectedIds.length > 0 ||
+      get().selectionAnchor !== null ||
+      get().selectionFocus !== null
+    ) {
+      set({ selectedIds: [], selectionAnchor: null, selectionFocus: null })
     }
   }
 
@@ -101,6 +116,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       focusRequest: null,
       selectedIds: [],
       selectionAnchor: null,
+      selectionFocus: null,
       past: [],
       future: []
     })
@@ -120,6 +136,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         focusRequest: null,
         selectedIds: [],
         selectionAnchor: null,
+        selectionFocus: null,
         past: [],
         future: []
       })
@@ -151,7 +168,13 @@ export const useEditorStore = create<EditorState>((set, get) => {
     clearSelection()
     pushHistory()
     lastTextEdit = null
-    if (selection) set({ selectedIds: selection.ids, selectionAnchor: selection.anchor })
+    if (selection) {
+      set({
+        selectedIds: selection.ids,
+        selectionAnchor: selection.anchor,
+        selectionFocus: selection.ids[selection.ids.length - 1] ?? null
+      })
+    }
     commit(blocks, focus)
   }
 
@@ -164,6 +187,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     focusRequest: null,
     selectedIds: [],
     selectionAnchor: null,
+    selectionFocus: null,
     past: [],
     future: [],
 
@@ -211,6 +235,18 @@ export const useEditorStore = create<EditorState>((set, get) => {
       lastTextEdit = { blockId: id, at: now }
       set({ blocks, future: [] })
       persistence.schedulePersist()
+    },
+
+    replaceTextRange: (range, text, options) => {
+      const current = get().blocks
+      const result = tx.replaceTextRange(current, range, text, options)
+      const focus = options?.focus ?? result.focus
+      if (result.blocks === current) {
+        clearSelection()
+        if (focus) get().requestFocus(focus.blockId, focus.caret)
+        return
+      }
+      mutate(result.blocks, focus)
     },
 
     applyInput: (id, text) => {
@@ -417,14 +453,15 @@ export const useEditorStore = create<EditorState>((set, get) => {
         const anchorIndex = blocks.findIndex((block) => block.id === anchor)
         const targetIndex = blocks.findIndex((block) => block.id === id)
         if (anchorIndex === -1 || targetIndex === -1) {
-          set({ selectedIds: [id], selectionAnchor: id })
+          set({ selectedIds: [id], selectionAnchor: id, selectionFocus: id })
           return
         }
         const from = Math.min(anchorIndex, targetIndex)
         const to = Math.max(anchorIndex, targetIndex)
         set({
           selectedIds: blocks.slice(from, to + 1).map((block) => block.id),
-          selectionAnchor: anchor
+          selectionAnchor: anchor,
+          selectionFocus: id
         })
         return
       }
@@ -433,15 +470,21 @@ export const useEditorStore = create<EditorState>((set, get) => {
         const next = selectedIds.includes(id)
           ? selectedIds.filter((candidate) => candidate !== id)
           : [...selectedIds, id]
-        set({ selectedIds: next, selectionAnchor: next.length > 0 ? anchor : null })
+        set({
+          selectedIds: next,
+          selectionAnchor: next.length > 0 ? anchor : null,
+          selectionFocus: next.length > 0 ? (next.includes(id) ? id : next[next.length - 1]) : null
+        })
         return
       }
-      set({ selectedIds: [], selectionAnchor: id })
+      set({ selectedIds: [], selectionAnchor: id, selectionFocus: id })
     },
 
     extendSelection: (id, direction) => {
-      const { blocks, activeBlockId, selectionAnchor } = get()
-      const currentIndex = blocks.findIndex((block) => block.id === id)
+      const { blocks, activeBlockId, selectedIds, selectionAnchor, selectionFocus } = get()
+      const currentId =
+        selectionFocus && selectedIds.includes(selectionFocus) ? selectionFocus : id
+      const currentIndex = blocks.findIndex((block) => block.id === currentId)
       const targetIndex = currentIndex + direction
       if (currentIndex === -1 || targetIndex < 0 || targetIndex >= blocks.length) return
       const anchor = selectionAnchor ?? activeBlockId ?? id
@@ -451,7 +494,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const target = tx.nearestTextualBlock(blocks, targetIndex, direction)
       set({
         selectedIds: blocks.slice(from, to + 1).map((block) => block.id),
-        selectionAnchor: anchor
+        selectionAnchor: anchor,
+        selectionFocus: blocks[targetIndex].id
       })
       if (target) get().requestFocus(target.id, direction < 0 ? target.text.length : 0)
     },
@@ -478,7 +522,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
         blocks: entry.blocks,
         activeBlockId: entry.activeBlockId,
         selectedIds: [],
-        selectionAnchor: null
+        selectionAnchor: null,
+        selectionFocus: null
       })
       const target =
         entry.blocks.find((block) => block.id === entry.activeBlockId) ?? entry.blocks[0]
@@ -497,7 +542,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
         blocks: entry.blocks,
         activeBlockId: entry.activeBlockId,
         selectedIds: [],
-        selectionAnchor: null
+        selectionAnchor: null,
+        selectionFocus: null
       })
       const target =
         entry.blocks.find((block) => block.id === entry.activeBlockId) ?? entry.blocks[0]

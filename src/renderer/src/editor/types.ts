@@ -14,6 +14,21 @@ export interface FocusTarget {
   caret: number
 }
 
+export interface BlockTextPoint {
+  blockId: string
+  offset: number
+}
+
+export interface BlockTextRange {
+  start: BlockTextPoint
+  end: BlockTextPoint
+}
+
+export interface TextRangeReplaceOptions {
+  focus?: FocusTarget
+  preserveBlockBoundary?: boolean
+}
+
 export interface TransformResult {
   blocks: EditorBlock[]
   focus?: FocusTarget

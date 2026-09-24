@@ -12,8 +12,10 @@ import {
   moveBlock,
   nearestTextualBlock,
   outdentBlock,
+  readTextRange,
   removeBlock,
   removeBlocks,
+  replaceTextRange,
   splitBlock,
   updateStatus,
   updateText
@@ -63,6 +65,94 @@ describe('blockAt / updateText / changeType', () => {
     const toBullet = changeType([make('a', 'uno', { type: 'todo', status: 'in-progress' })], 'a', 'bullet')
     expect(toBullet[0].type).toBe('bullet')
     expect('status' in toBullet[0]).toBe(false)
+  })
+})
+
+describe('readTextRange / replaceTextRange', () => {
+  it('lee y reemplaza rangos que cruzan bloques sin eliminar su estructura', () => {
+    const blocks = [make('a', 'abcd'), make('b', 'efgh'), make('c', 'ijkl')]
+    const range = {
+      start: { blockId: 'a', offset: 1 },
+      end: { blockId: 'c', offset: 2 }
+    }
+
+    expect(readTextRange(blocks, range)).toBe('bcd\nefgh\nij')
+
+    const result = replaceTextRange(blocks, range, 'X')
+
+    expect(result.blocks.map((block) => block.text)).toEqual(['aX', '', 'kl'])
+    expect(result.focus).toEqual({ blockId: 'a', caret: 2 })
+    expect(blocks.map((block) => block.text)).toEqual(['abcd', 'efgh', 'ijkl'])
+  })
+
+  it('normaliza rangos invertidos y conserva el sufijo del bloque inicial', () => {
+    const blocks = [make('a', 'abcd'), make('b', 'efgh')]
+    const range = {
+      start: { blockId: 'b', offset: 2 },
+      end: { blockId: 'a', offset: 1 }
+    }
+
+    expect(readTextRange(blocks, range)).toBe('bcd\nef')
+    expect(replaceTextRange(blocks, range, 'X').blocks.map((block) => block.text)).toEqual([
+      'aX',
+      'gh'
+    ])
+  })
+
+  it('reemplaza selecciones dentro de un bloque, incluyendo saltos de línea', () => {
+    const blocks = [make('a', 'ab\ncd')]
+    const result = replaceTextRange(
+      blocks,
+      { start: { blockId: 'a', offset: 1 }, end: { blockId: 'a', offset: 4 } },
+      'X\nY'
+    )
+
+    expect(result.blocks[0].text).toBe('aX\nYd')
+    expect(result.focus).toEqual({ blockId: 'a', caret: 4 })
+  })
+
+  it('al reemplazar solo el separador une bloques y elimina la separación estructural', () => {
+    const blocks = [make('a', 'left'), make('b', 'right')]
+    const range = {
+      start: { blockId: 'a', offset: 4 },
+      end: { blockId: 'b', offset: 0 }
+    }
+
+    expect(readTextRange(blocks, range)).toBe('\n')
+
+    const deleted = replaceTextRange(blocks, range, '')
+    expect(deleted.blocks).toEqual([make('a', 'leftright')])
+    expect(deleted.focus).toEqual({ blockId: 'a', caret: 4 })
+
+    const replaced = replaceTextRange(blocks, range, ' ')
+    expect(replaced.blocks).toEqual([make('a', 'left right')])
+    expect(replaced.focus).toEqual({ blockId: 'a', caret: 5 })
+  })
+
+  it('puede preservar el separador de bloques al reemplazar con Enter', () => {
+    const blocks = [make('a', 'left'), make('b', 'right')]
+    const result = replaceTextRange(
+      blocks,
+      { start: { blockId: 'a', offset: 2 }, end: { blockId: 'b', offset: 2 } },
+      '',
+      { preserveBlockBoundary: true }
+    )
+
+    expect(result.blocks.map((block) => block.text)).toEqual(['le', 'ght'])
+    expect(result.focus).toEqual({ blockId: 'a', caret: 2 })
+  })
+
+  it('ignora rangos con ids inexistentes o extremos no textuales', () => {
+    const blocks = [make('a', 'abcd'), make('d', '', { type: 'divider' })]
+
+    expect(readTextRange(blocks, {
+      start: { blockId: 'a', offset: 1 },
+      end: { blockId: 'missing', offset: 0 }
+    })).toBeNull()
+    expect(replaceTextRange(blocks, {
+      start: { blockId: 'a', offset: 1 },
+      end: { blockId: 'd', offset: 0 }
+    }, 'X').blocks).toBe(blocks)
   })
 })
 

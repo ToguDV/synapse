@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from 'react'
-import { insertPlainText, readPlainText, writePlainText } from '../editor/caret'
+import { readPlainText, writePlainText } from '../editor/caret'
 
 interface EditableTextProps {
   blockId: string
@@ -49,11 +49,6 @@ export function EditableText({
       }}
       onKeyDown={onKeyDown}
       onFocus={onFocus}
-      onPaste={(event) => {
-        event.preventDefault()
-        const text = event.clipboardData.getData('text/plain')
-        if (text && insertPlainText(text)) onInput(readPlainText(event.currentTarget))
-      }}
     />
   )
 }
