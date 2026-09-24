@@ -12,6 +12,7 @@ import { createPagesRepo } from '../db/repositories/pages'
 import { createBlocksRepo } from '../db/repositories/blocks'
 import { createSearchRepo } from '../db/repositories/search'
 import { createSettingsRepo } from '../db/repositories/settings'
+import { benchmarkMeasure } from '../benchmark'
 
 export interface RegisterIpcOptions {
   onSettingChanged?: (key: string, value: string) => void
@@ -116,7 +117,9 @@ export function registerIpc(
   const search = createSearchRepo(db)
   const settings = createSettingsRepo(db)
 
-  ipcMain.handle('pages:list', () => pages.list())
+  ipcMain.handle('pages:list', () =>
+    benchmarkMeasure('pages:list', () => pages.list(), (result) => ({ count: result.length }))
+  )
   ipcMain.handle('pages:get', (_event, id: unknown) => pages.get(requireId(id)))
   ipcMain.handle('pages:create', (_event, input: unknown) => pages.create(parsePageCreateInput(input)))
   ipcMain.handle('pages:rename', (_event, payload: unknown) => {
@@ -136,7 +139,13 @@ export function registerIpc(
   })
   ipcMain.handle('pages:remove', (_event, id: unknown) => pages.remove(requireId(id)))
 
-  ipcMain.handle('blocks:list', (_event, pageId: unknown) => blocks.list(requireId(pageId, 'pageId')))
+  ipcMain.handle('blocks:list', (_event, pageId: unknown) =>
+    benchmarkMeasure(
+      'blocks:list',
+      () => blocks.list(requireId(pageId, 'pageId')),
+      (result) => ({ count: result.length })
+    )
+  )
   ipcMain.handle('blocks:create', (_event, input: unknown) => blocks.create(parseBlockCreateInput(input)))
   ipcMain.handle('blocks:update', (_event, payload: unknown) => {
     const { id, patch } = requireObject(payload)
@@ -156,14 +165,22 @@ export function registerIpc(
     return blocks.sync(input.pageId, { upserts: input.upserts, removeIds: input.removeIds })
   })
 
-  ipcMain.handle('search:query', (_event, payload: unknown) => {
-    const { term, limit } = (payload ?? {}) as Record<string, unknown>
-    const text = requireString(term, 'term').trim()
-    if (text.length === 0) return []
-    const parsedLimit =
-      limit === undefined ? 20 : Math.min(50, Math.max(1, Math.floor(requireNumber(limit, 'limit'))))
-    return search.search(text, parsedLimit)
-  })
+  ipcMain.handle('search:query', (_event, payload: unknown) =>
+    benchmarkMeasure(
+      'search:query',
+      () => {
+        const { term, limit } = (payload ?? {}) as Record<string, unknown>
+        const text = requireString(term, 'term').trim()
+        if (text.length === 0) return []
+        const parsedLimit =
+          limit === undefined
+            ? 20
+            : Math.min(50, Math.max(1, Math.floor(requireNumber(limit, 'limit'))))
+        return search.search(text, parsedLimit)
+      },
+      (result) => ({ count: result.length })
+    )
+  )
 
   ipcMain.handle('settings:get', (_event, key: unknown) => settings.get(requireId(key, 'key')))
   ipcMain.handle('settings:set', (_event, payload: unknown) => {

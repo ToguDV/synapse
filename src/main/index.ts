@@ -6,6 +6,9 @@ import { createSettingsRepo } from './db/repositories/settings'
 import { registerIpc } from './ipc/registerIpc'
 import { applyStoredTheme, applyThemePreference } from './theme'
 import { THEME_PREFERENCE_KEY } from '../shared/theme'
+import { benchmarkEvent, isBenchmarkEnabled } from './benchmark'
+
+benchmarkEvent('main-start')
 
 if (process.env['ELECTRON_DISABLE_GPU']) {
   app.commandLine.appendSwitch('disable-gpu')
@@ -27,7 +30,10 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => mainWindow.show())
+  mainWindow.on('ready-to-show', () => {
+    benchmarkEvent('window-ready')
+    mainWindow.show()
+  })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
@@ -42,21 +48,41 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  benchmarkEvent('app-ready')
   const db = openDatabase(resolveDatabasePath())
+  benchmarkEvent('database-open')
   applyStoredTheme(createSettingsRepo(db))
   registerIpc(db, {
     onSettingChanged: (key, value) => {
       if (key === THEME_PREFERENCE_KEY) applyThemePreference(value)
     }
   })
+  benchmarkEvent('ipc-ready')
 
   createWindow()
+
+  const memoryTimer = isBenchmarkEnabled()
+    ? setInterval(() => {
+        try {
+          const processes = app.getAppMetrics().map((metric) => ({
+            type: metric.type,
+            pid: metric.pid,
+            workingSetSizeKb: metric.memory.workingSetSize,
+            privateBytesKb: metric.memory.privateBytes
+          }))
+          benchmarkEvent('memory-sample', { processes })
+        } catch {
+          // Metrics are diagnostic only; sampling must not affect the app.
+        }
+      }, 500)
+    : null
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 
   app.on('will-quit', () => {
+    if (memoryTimer) clearInterval(memoryTimer)
     db.close()
   })
 })
