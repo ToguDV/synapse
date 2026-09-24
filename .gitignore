@@ -8,13 +8,3 @@ release/
 *.db
 .DS_Store
 .playwright-mcp/
-
-# Herramientas de agentes/IA (locales, no versionar)
-AGENTS.md
-CLAUDE.md
-.opencode/
-.claude/
-.cursor/
-.cursorrules
-.aider*
-.agents/
