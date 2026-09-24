@@ -14,7 +14,7 @@ linux:
     - AppImage
     - deb
   category: Utility
-  maintainer: togu <togu@localhost>
+  maintainer: ToguDV <ToguDV@users.noreply.github.com>
   synopsis: Notion-style block editor
   description: Offline-first block editor with local SQLite storage.
   syncDesktopName: true

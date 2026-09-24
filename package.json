@@ -3,11 +3,32 @@
   "version": "0.1.0",
   "description": "Notion-style block editor",
   "homepage": "https://synapse.togudv.com",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ToguDV/synapse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ToguDV/synapse/issues"
+  },
+  "license": "MIT",
   "desktopName": "synapse.desktop",
   "main": "out/main/index.js",
-  "author": "togu",
+  "author": "ToguDV",
   "private": true,
+  "keywords": [
+    "electron",
+    "notion",
+    "block-editor",
+    "sqlite",
+    "offline-first",
+    "react",
+    "typescript",
+    "zustand",
+    "tailwindcss"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
