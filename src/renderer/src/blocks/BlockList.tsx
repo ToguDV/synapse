@@ -14,6 +14,7 @@ import { useTranslation } from '../i18n'
 import { BlockMenu } from '../ui/BlockMenu'
 import { rectAnchor, rectAnchorIfConnected } from '../ui/rectAnchor'
 import { SlashMenu } from '../ui/SlashMenu'
+import { DRAG_THRESHOLD_PX, TOUCH_DRAG_THRESHOLD_PX } from '../ui/usePageDrag'
 import { BlockRow } from './BlockRow'
 
 interface PendingDrag {
@@ -32,8 +33,6 @@ interface DragState {
   indent: number
 }
 
-const DRAG_THRESHOLD_PX = 4
-const TOUCH_DRAG_THRESHOLD_PX = 8
 const INDENT_STEP_PX = 24
 const AUTOSCROLL_EDGE_PX = 56
 const AUTOSCROLL_STEP_PX = 12
