@@ -2,25 +2,17 @@ import { create } from 'zustand'
 import type { TodoStatus } from '../../../shared/content'
 import type { BlockType } from '../../../shared/types'
 import { matchInputRule } from './commands'
-import { parseBlockContent, serializeContent } from './content'
 import { getBlockDefinition } from './registry'
+import { createPersistence, type PersistenceHooks } from './persistence'
 import * as tx from './transforms'
 import type { EditorBlock, FocusTarget } from './types'
 
-const AUTOSAVE_DELAY_MS = 400
 const TEXT_COALESCE_MS = 600
 const HISTORY_LIMIT = 200
 
 interface HistoryEntry {
   blocks: EditorBlock[]
   activeBlockId: string | null
-}
-
-interface PersistedBlock {
-  content: string
-  type: BlockType
-  indent: number
-  position: number
 }
 
 export interface FocusRequest extends FocusTarget {
@@ -79,21 +71,7 @@ function createBlockId(): string {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => {
-  let persisted = new Map<string, PersistedBlock>()
-  let persistedPageId: string | null = null
-  let persistTimer: ReturnType<typeof setTimeout> | undefined
-  let flushQueue: Promise<void> = Promise.resolve()
-  let loadQueue: Promise<void> = Promise.resolve()
   let lastTextEdit: { blockId: string; at: number } | null = null
-  const cancelledLoads = new Set<string>()
-  let pendingBlockFocus: { pageId: string; blockId: string } | null = null
-
-  const schedulePersist = (): void => {
-    clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
-      void get().flush()
-    }, AUTOSAVE_DELAY_MS)
-  }
 
   const snapshot = (): HistoryEntry => ({
     blocks: get().blocks,
@@ -105,24 +83,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
     set((state) => ({ past: [...state.past, entry].slice(-HISTORY_LIMIT), future: [] }))
   }
 
-  const commit = (blocks: EditorBlock[], focus?: FocusTarget): void => {
-    set({ blocks })
-    if (focus) get().requestFocus(focus.blockId, focus.caret)
-    schedulePersist()
-  }
-
   const clearSelection = (): void => {
     if (get().selectedIds.length > 0 || get().selectionAnchor !== null) {
       set({ selectedIds: [], selectionAnchor: null })
     }
   }
 
-  const resetState = (): void => {
-    clearTimeout(persistTimer)
-    persisted = new Map()
-    persistedPageId = null
+  const resetLocal = (): void => {
     lastTextEdit = null
-    pendingBlockFocus = null
     set({
       pageId: null,
       blocks: [],
@@ -136,75 +104,52 @@ export const useEditorStore = create<EditorState>((set, get) => {
     })
   }
 
-  const isLoadCurrent = (pageId: string): boolean => get().pageId === pageId
-
-  const abortCancelledLoad = (pageId: string): boolean => {
-    if (!cancelledLoads.has(pageId)) return false
-    if (isLoadCurrent(pageId)) resetState()
-    return true
+  const hooks: PersistenceHooks = {
+    currentPage: () => get().pageId,
+    currentBlocks: () => get().blocks,
+    beginLoad: (pageId) => {
+      lastTextEdit = null
+      set({
+        pageId,
+        blocks: [],
+        loading: true,
+        activeBlockId: null,
+        focusRequest: null,
+        selectedIds: [],
+        selectionAnchor: null,
+        past: [],
+        future: []
+      })
+    },
+    applyLoaded: (pageId, blocks) => {
+      if (get().pageId !== pageId) return
+      set({ blocks, loading: false })
+    },
+    onLoadError: (pageId) => {
+      if (get().pageId === pageId) set({ loading: false })
+    },
+    resetEditor: resetLocal,
+    requestFocus: (blockId, caret) => get().requestFocus(blockId, caret)
   }
 
-  const performLoad = async (pageId: string): Promise<void> => {
-    await get().flush()
-    if (cancelledLoads.has(pageId)) return
-    if (pendingBlockFocus && pendingBlockFocus.pageId !== pageId) pendingBlockFocus = null
-    persisted = new Map()
-    persistedPageId = pageId
+  const persistence = createPersistence(hooks)
+
+  const commit = (blocks: EditorBlock[], focus?: FocusTarget): void => {
+    set({ blocks })
+    if (focus) get().requestFocus(focus.blockId, focus.caret)
+    persistence.schedulePersist()
+  }
+
+  const mutate = (
+    blocks: EditorBlock[],
+    focus?: FocusTarget,
+    selection?: { ids: string[]; anchor: string | null }
+  ): void => {
+    clearSelection()
+    pushHistory()
     lastTextEdit = null
-    set({
-      pageId,
-      blocks: [],
-      loading: true,
-      activeBlockId: null,
-      focusRequest: null,
-      selectedIds: [],
-      selectionAnchor: null,
-      past: [],
-      future: []
-    })
-    try {
-      let rows = await window.api.blocks.list(pageId)
-      if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
-      if (rows.length === 0) {
-        try {
-          rows = [await window.api.blocks.create({ pageId })]
-        } catch (error) {
-          if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
-          throw error
-        }
-        if (abortCancelledLoad(pageId) || !isLoadCurrent(pageId)) return
-      }
-      for (const row of rows) {
-        persisted.set(row.id, {
-          content: row.content,
-          type: row.type,
-          indent: row.indent,
-          position: row.position
-        })
-      }
-      set({
-        blocks: rows.map((row) => {
-          const parsed = parseBlockContent(row.content)
-          return {
-            id: row.id,
-            type: row.type,
-            text: parsed.text,
-            indent: row.indent,
-            ...(getBlockDefinition(row.type).hasStatus ? { status: parsed.status } : {})
-          }
-        }),
-        loading: false
-      })
-      if (pendingBlockFocus && pendingBlockFocus.pageId === pageId) {
-        const { blockId } = pendingBlockFocus
-        pendingBlockFocus = null
-        get().requestFocus(blockId, 0)
-      }
-    } catch (error) {
-      if (get().pageId === pageId) set({ loading: false })
-      if (pendingBlockFocus?.pageId === pageId) pendingBlockFocus = null
-      throw error
-    }
+    if (selection) set({ selectedIds: selection.ids, selectionAnchor: selection.anchor })
+    commit(blocks, focus)
   }
 
   return {
@@ -218,88 +163,16 @@ export const useEditorStore = create<EditorState>((set, get) => {
     past: [],
     future: [],
 
-    loadPage: (pageId) => {
-      cancelledLoads.delete(pageId)
-      loadQueue = loadQueue.then(
-        () => performLoad(pageId),
-        () => performLoad(pageId)
-      )
-      return loadQueue
+    loadPage: (pageId) => persistence.loadPage(pageId),
+
+    cancelLoad: (pageId) => persistence.cancelLoad(pageId),
+
+    reset: () => {
+      persistence.clear()
+      resetLocal()
     },
 
-    cancelLoad: (pageId) => {
-      cancelledLoads.add(pageId)
-      return () => {
-        cancelledLoads.delete(pageId)
-      }
-    },
-
-    reset: resetState,
-
-    flush: () => {
-      clearTimeout(persistTimer)
-      const run = async (): Promise<void> => {
-        const { pageId, blocks } = get()
-        if (!pageId || pageId !== persistedPageId) return
-        const ids = new Set(blocks.map((block) => block.id))
-        for (const id of [...persisted.keys()]) {
-          if (ids.has(id)) continue
-          await window.api.blocks.remove(id)
-          persisted.delete(id)
-        }
-        for (let index = 0; index < blocks.length; index++) {
-          const block = blocks[index]
-          const content = serializeContent(block.text, block.status ?? 'todo')
-          const stored = persisted.get(block.id)
-          if (!stored) {
-            await window.api.blocks.create({
-              id: block.id,
-              pageId,
-              type: block.type,
-              content,
-              position: index,
-              indent: block.indent
-            })
-            persisted.set(block.id, {
-              content,
-              type: block.type,
-              indent: block.indent,
-              position: index
-            })
-            continue
-          }
-          if (
-            stored.content !== content ||
-            stored.type !== block.type ||
-            stored.indent !== block.indent
-          ) {
-            await window.api.blocks.update(block.id, {
-              type: block.type,
-              content,
-              indent: block.indent
-            })
-            stored.content = content
-            stored.type = block.type
-            stored.indent = block.indent
-          }
-        }
-        if (
-          blocks.length > 0 &&
-          blocks.some((block, index) => persisted.get(block.id)?.position !== index)
-        ) {
-          await window.api.blocks.reorder(
-            pageId,
-            blocks.map((block) => block.id)
-          )
-          blocks.forEach((block, index) => {
-            const stored = persisted.get(block.id)
-            if (stored) stored.position = index
-          })
-        }
-      }
-      flushQueue = flushQueue.then(run, run)
-      return flushQueue
-    },
+    flush: () => persistence.flush(),
 
     setActiveBlock: (id) => set({ activeBlockId: id }),
 
@@ -313,7 +186,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         get().requestFocus(blockId, 0)
         return
       }
-      pendingBlockFocus = { pageId, blockId }
+      persistence.setPendingBlockFocus({ pageId, blockId })
     },
 
     consumeFocus: () => set({ focusRequest: null }),
@@ -333,7 +206,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
       lastTextEdit = { blockId: id, at: now }
       set({ blocks, future: [] })
-      schedulePersist()
+      persistence.schedulePersist()
     },
 
     applyInput: (id, text) => {
@@ -347,22 +220,19 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return
       }
       const ruleDefinition = getBlockDefinition(rule.type)
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       const sameType = get().blocks
       if (ruleDefinition.appendsParagraph) {
         const paragraphId = createBlockId()
         let blocks = tx.changeType(sameType, id, rule.type)
         blocks = tx.updateText(blocks, id, '')
         blocks = tx.insertAfter(blocks, id, [{ id: paragraphId, type: 'paragraph' }])
-        commit(blocks, { blockId: paragraphId, caret: 0 })
+        mutate(blocks, { blockId: paragraphId, caret: 0 })
         return
       }
       let blocks = tx.changeType(sameType, id, rule.type)
       if (ruleDefinition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
       blocks = tx.updateText(blocks, id, rule.text)
-      commit(blocks, { blockId: id, caret: rule.text.length })
+      mutate(blocks, { blockId: id, caret: rule.text.length })
     },
 
     toggleDone: (id) => {
@@ -374,18 +244,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
     setStatus: (id, status) => {
       const blocks = tx.updateStatus(get().blocks, id, status)
       if (blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(blocks)
+      mutate(blocks)
     },
 
     splitAt: (id, offset) => {
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       const result = tx.splitBlock(get().blocks, id, offset, createBlockId())
-      commit(result.blocks, result.focus)
+      mutate(result.blocks, result.focus)
     },
 
     mergeBackward: (id) => {
@@ -393,28 +257,18 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (!found) return
       const { block, index } = found
       if (block.text === '' && block.type !== 'paragraph') {
-        clearSelection()
-        pushHistory()
-        lastTextEdit = null
-        commit(tx.changeType(get().blocks, id, 'paragraph'))
-        get().requestFocus(id, 0)
+        mutate(tx.changeType(get().blocks, id, 'paragraph'), { blockId: id, caret: 0 })
         return
       }
       if (index === 0) return
       const previous = get().blocks[index - 1]
       if (!tx.isTextualBlock(previous)) {
-        clearSelection()
-        pushHistory()
-        lastTextEdit = null
         const result = tx.removeBlocks(get().blocks, [previous.id])
-        commit(result.blocks, { blockId: id, caret: 0 })
+        mutate(result.blocks, { blockId: id, caret: 0 })
         return
       }
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       const result = tx.mergeWithPrevious(get().blocks, id)
-      commit(result.blocks, result.focus)
+      mutate(result.blocks, result.focus)
     },
 
     mergeForward: (id) => {
@@ -423,55 +277,37 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const nextBlock = get().blocks[found.index + 1]
       if (!nextBlock) return
       if (!tx.isTextualBlock(nextBlock)) {
-        clearSelection()
-        pushHistory()
-        lastTextEdit = null
         const result = tx.removeBlocks(get().blocks, [nextBlock.id])
-        commit(result.blocks, { blockId: id, caret: found.block.text.length })
+        mutate(result.blocks, { blockId: id, caret: found.block.text.length })
         return
       }
       const result = tx.mergeWithNext(get().blocks, id)
       if (result.blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(result.blocks, result.focus)
+      mutate(result.blocks, result.focus)
     },
 
     indentBlock: (id) => {
       const blocks = tx.indentBlock(get().blocks, id)
       if (blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(blocks)
+      mutate(blocks)
     },
 
     outdentBlock: (id) => {
       const blocks = tx.outdentBlock(get().blocks, id)
       if (blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(blocks)
+      mutate(blocks)
     },
 
     setBlockType: (id, type) => {
       const blocks = tx.changeType(get().blocks, id, type)
       if (blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(blocks)
+      mutate(blocks)
     },
 
     convertBlock: (id, type) => {
       const found = tx.blockAt(get().blocks, id)
       if (!found || found.block.type === type) return
       const definition = getBlockDefinition(type)
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       if (definition.appendsParagraph) {
         const following = tx.nearestTextualBlock(get().blocks, found.index + 1, 1)
         let blocks = tx.changeType(get().blocks, id, type)
@@ -481,21 +317,18 @@ export const useEditorStore = create<EditorState>((set, get) => {
           focusId = createBlockId()
           blocks = tx.insertAfter(blocks, id, [{ id: focusId, type: 'paragraph' }])
         }
-        commit(blocks, { blockId: focusId, caret: 0 })
+        mutate(blocks, { blockId: focusId, caret: 0 })
         return
       }
       let blocks = tx.changeType(get().blocks, id, type)
       if (definition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
-      commit(blocks, { blockId: id, caret: found.block.text.length })
+      mutate(blocks, { blockId: id, caret: found.block.text.length })
     },
 
     applySlashCommand: (id, type) => {
       const found = tx.blockAt(get().blocks, id)
       if (!found) return
       const definition = getBlockDefinition(type)
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       const { block } = found
       const inPlace = block.text === ''
       if (definition.appendsParagraph) {
@@ -503,7 +336,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
           const paragraphId = createBlockId()
           let blocks = tx.changeType(get().blocks, id, type)
           blocks = tx.insertAfter(blocks, id, [{ id: paragraphId, type: 'paragraph' }])
-          commit(blocks, { blockId: paragraphId, caret: 0 })
+          mutate(blocks, { blockId: paragraphId, caret: 0 })
         } else {
           const dividerId = createBlockId()
           const paragraphId = createBlockId()
@@ -511,14 +344,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
             { id: dividerId, type, indent: 0 },
             { id: paragraphId, type: 'paragraph', indent: 0 }
           ])
-          commit(blocks, { blockId: paragraphId, caret: 0 })
+          mutate(blocks, { blockId: paragraphId, caret: 0 })
         }
         return
       }
       if (inPlace) {
         let blocks = tx.changeType(get().blocks, id, type)
         if (definition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
-        commit(blocks, { blockId: id, caret: 0 })
+        mutate(blocks, { blockId: id, caret: 0 })
         return
       }
       const newBlockId = createBlockId()
@@ -530,7 +363,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
           ...(definition.hasStatus ? { status: 'todo' as const } : {})
         }
       ])
-      commit(blocks, { blockId: newBlockId, caret: 0 })
+      mutate(blocks, { blockId: newBlockId, caret: 0 })
     },
 
     removeBlock: (id) => {
@@ -542,9 +375,6 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (targets.length === 0) return
       const result = tx.removeBlocks(get().blocks, targets)
       if (result.blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
       let blocks = result.blocks
       let focus = result.focus
       if (blocks.length === 0) {
@@ -556,7 +386,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         blocks = [...blocks, { id, type: 'paragraph', text: '', indent: 0 }]
         focus = { blockId: id, caret: 0 }
       }
-      commit(blocks, focus)
+      mutate(blocks, focus)
     },
 
     duplicateBlocks: (ids) => {
@@ -564,19 +394,16 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (targets.length === 0) return
       const result = tx.duplicateBlocks(get().blocks, targets, createBlockId)
       if (result.blocks === get().blocks) return
-      pushHistory()
-      lastTextEdit = null
-      set({ selectedIds: result.newIds, selectionAnchor: result.newIds[0] ?? null })
-      commit(result.blocks)
+      mutate(result.blocks, undefined, {
+        ids: result.newIds,
+        anchor: result.newIds[0] ?? null
+      })
     },
 
     moveBlockTo: (id, toIndex, indent) => {
       const blocks = tx.moveBlock(get().blocks, id, toIndex, indent)
       if (blocks === get().blocks) return
-      clearSelection()
-      pushHistory()
-      lastTextEdit = null
-      commit(blocks)
+      mutate(blocks)
     },
 
     selectBlock: (id, mode) => {
@@ -652,7 +479,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const target =
         entry.blocks.find((block) => block.id === entry.activeBlockId) ?? entry.blocks[0]
       if (target) get().requestFocus(target.id, target.text.length)
-      schedulePersist()
+      persistence.schedulePersist()
     },
 
     redo: () => {
@@ -671,7 +498,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       const target =
         entry.blocks.find((block) => block.id === entry.activeBlockId) ?? entry.blocks[0]
       if (target) get().requestFocus(target.id, target.text.length)
-      schedulePersist()
+      persistence.schedulePersist()
     }
   }
 })
