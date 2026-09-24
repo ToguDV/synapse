@@ -12,8 +12,15 @@ import { createPagesRepo } from '../db/repositories/pages'
 import { createBlocksRepo } from '../db/repositories/blocks'
 import { createSearchRepo } from '../db/repositories/search'
 import { createSettingsRepo } from '../db/repositories/settings'
-import { applyThemePreference } from '../theme'
-import { THEME_PREFERENCE_KEY } from '../../shared/theme'
+
+export interface RegisterIpcOptions {
+  onSettingChanged?: (key: string, value: string) => void
+}
+
+function requireObject(value: unknown, name = 'payload'): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) throw new Error(`${name} must be an object`)
+  return value as Record<string, unknown>
+}
 
 function requireString(value: unknown, name: string): string {
   if (typeof value !== 'string') throw new Error(`${name} must be a string`)
@@ -100,7 +107,10 @@ function parseBlockSyncInput(
   }
 }
 
-export function registerIpc(db: Database.Database): void {
+export function registerIpc(
+  db: Database.Database,
+  options: RegisterIpcOptions = {}
+): void {
   const pages = createPagesRepo(db)
   const blocks = createBlocksRepo(db)
   const search = createSearchRepo(db)
@@ -110,15 +120,15 @@ export function registerIpc(db: Database.Database): void {
   ipcMain.handle('pages:get', (_event, id: unknown) => pages.get(requireId(id)))
   ipcMain.handle('pages:create', (_event, input: unknown) => pages.create(parsePageCreateInput(input)))
   ipcMain.handle('pages:rename', (_event, payload: unknown) => {
-    const { id, title } = payload as Record<string, unknown>
+    const { id, title } = requireObject(payload)
     return pages.rename(requireId(id), requireString(title, 'title'))
   })
   ipcMain.handle('pages:setIcon', (_event, payload: unknown) => {
-    const { id, icon } = payload as Record<string, unknown>
+    const { id, icon } = requireObject(payload)
     return pages.setIcon(requireId(id), icon === null ? null : requireString(icon, 'icon'))
   })
   ipcMain.handle('pages:move', (_event, payload: unknown) => {
-    const { id, parentId, position } = payload as Record<string, unknown>
+    const { id, parentId, position } = requireObject(payload)
     return pages.move(requireId(id), {
       parentId: parentId === null ? null : requireId(parentId, 'parentId'),
       position: requireNumber(position, 'position')
@@ -129,11 +139,11 @@ export function registerIpc(db: Database.Database): void {
   ipcMain.handle('blocks:list', (_event, pageId: unknown) => blocks.list(requireId(pageId, 'pageId')))
   ipcMain.handle('blocks:create', (_event, input: unknown) => blocks.create(parseBlockCreateInput(input)))
   ipcMain.handle('blocks:update', (_event, payload: unknown) => {
-    const { id, patch } = payload as Record<string, unknown>
+    const { id, patch } = requireObject(payload)
     return blocks.update(requireId(id), parseBlockPatch(patch))
   })
   ipcMain.handle('blocks:reorder', (_event, payload: unknown) => {
-    const { pageId, orderedIds } = payload as Record<string, unknown>
+    const { pageId, orderedIds } = requireObject(payload)
     if (!Array.isArray(orderedIds)) throw new Error('orderedIds must be an array')
     return blocks.reorder(
       requireId(pageId, 'pageId'),
@@ -157,10 +167,10 @@ export function registerIpc(db: Database.Database): void {
 
   ipcMain.handle('settings:get', (_event, key: unknown) => settings.get(requireId(key, 'key')))
   ipcMain.handle('settings:set', (_event, payload: unknown) => {
-    const { key, value } = payload as Record<string, unknown>
+    const { key, value } = requireObject(payload)
     const parsedKey = requireId(key, 'key')
     const parsedValue = requireString(value, 'value')
     settings.set(parsedKey, parsedValue)
-    if (parsedKey === THEME_PREFERENCE_KEY) applyThemePreference(parsedValue)
+    options.onSettingChanged?.(parsedKey, parsedValue)
   })
 }

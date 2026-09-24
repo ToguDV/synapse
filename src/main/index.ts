@@ -4,7 +4,8 @@ import { openDatabase } from './db/connection'
 import { resolveDatabasePath } from './db/path'
 import { createSettingsRepo } from './db/repositories/settings'
 import { registerIpc } from './ipc/registerIpc'
-import { applyStoredTheme } from './theme'
+import { applyStoredTheme, applyThemePreference } from './theme'
+import { THEME_PREFERENCE_KEY } from '../shared/theme'
 
 if (process.env['ELECTRON_DISABLE_GPU']) {
   app.commandLine.appendSwitch('disable-gpu')
@@ -43,7 +44,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
   const db = openDatabase(resolveDatabasePath())
   applyStoredTheme(createSettingsRepo(db))
-  registerIpc(db)
+  registerIpc(db, {
+    onSettingChanged: (key, value) => {
+      if (key === THEME_PREFERENCE_KEY) applyThemePreference(value)
+    }
+  })
 
   createWindow()
 
