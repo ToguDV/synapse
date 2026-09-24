@@ -25,6 +25,7 @@ export interface EditorState {
   pageId: string | null
   blocks: EditorBlock[]
   loading: boolean
+  loadError: boolean
   activeBlockId: string | null
   focusRequest: FocusRequest | null
   selectedIds: string[]
@@ -95,6 +96,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       pageId: null,
       blocks: [],
       loading: false,
+      loadError: false,
       activeBlockId: null,
       focusRequest: null,
       selectedIds: [],
@@ -113,6 +115,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
         pageId,
         blocks: [],
         loading: true,
+        loadError: false,
         activeBlockId: null,
         focusRequest: null,
         selectedIds: [],
@@ -126,7 +129,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       set({ blocks, loading: false })
     },
     onLoadError: (pageId) => {
-      if (get().pageId === pageId) set({ loading: false })
+      if (get().pageId === pageId) set({ loading: false, loadError: true })
     },
     resetEditor: resetLocal,
     requestFocus: (blockId, caret) => get().requestFocus(blockId, caret)
@@ -156,6 +159,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     pageId: null,
     blocks: [],
     loading: false,
+    loadError: false,
     activeBlockId: null,
     focusRequest: null,
     selectedIds: [],

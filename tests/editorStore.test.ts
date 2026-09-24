@@ -69,6 +69,7 @@ beforeEach(() => {
     pageId: null,
     blocks: [],
     loading: false,
+    loadError: false,
     activeBlockId: null,
     focusRequest: null,
     selectedIds: [],
@@ -116,6 +117,45 @@ describe('editorStore · carga', () => {
     await load()
 
     expect(state().blocks[0].text).toBe('')
+  })
+
+  it('marca loadError cuando la carga falla y lo limpia al reintentar', async () => {
+    const { blocks } = installApi([])
+    blocks.list.mockRejectedValueOnce(new Error('db caída'))
+
+    await expect(load()).rejects.toThrow('db caída')
+
+    expect(state().loadError).toBe(true)
+    expect(state().loading).toBe(false)
+
+    await load()
+
+    expect(state().loadError).toBe(false)
+    expect(state().loading).toBe(false)
+    expect(state().blocks).toHaveLength(1)
+  })
+
+  it('marca loadError cuando la creación del bloque por defecto falla', async () => {
+    const { blocks } = installApi([])
+    blocks.create.mockRejectedValueOnce(new Error('db caída'))
+
+    await expect(load()).rejects.toThrow('db caída')
+
+    expect(state().loadError).toBe(true)
+    expect(state().loading).toBe(false)
+    expect(state().blocks).toHaveLength(0)
+  })
+
+  it('reset limpia el loadError', async () => {
+    const { blocks } = installApi([])
+    blocks.list.mockRejectedValueOnce(new Error('db caída'))
+
+    await expect(load()).rejects.toThrow('db caída')
+    expect(state().loadError).toBe(true)
+
+    state().reset()
+
+    expect(state().loadError).toBe(false)
   })
 })
 

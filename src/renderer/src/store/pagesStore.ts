@@ -103,8 +103,8 @@ export const usePagesStore = create<PagesState>((set, get) => ({
     const editor = useEditorStore.getState()
     const editorIsDoomed = editor.pageId !== null && doomed.has(editor.pageId)
     const restoreLoads = [...doomed].map((doomedId) => editor.cancelLoad(doomedId))
-    if (editorIsDoomed) await editor.flush()
     try {
+      if (editorIsDoomed) await editor.flush()
       await window.api.pages.remove(id)
     } catch (error) {
       for (const restoreLoad of restoreLoads) restoreLoad()

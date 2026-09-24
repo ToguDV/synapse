@@ -118,6 +118,7 @@ export function BlockList({ pageId }: { pageId: string }) {
   const { t } = useTranslation()
   const blocks = useEditorStore((state) => state.blocks)
   const loading = useEditorStore((state) => state.loading)
+  const loadError = useEditorStore((state) => state.loadError)
   const loadPage = useEditorStore((state) => state.loadPage)
   const focusRequest = useEditorStore((state) => state.focusRequest)
   const selectedIds = useEditorStore((state) => state.selectedIds)
@@ -136,7 +137,7 @@ export function BlockList({ pageId }: { pageId: string }) {
 
   useEffect(() => {
     if (useEditorStore.getState().pageId === pageId) return
-    void loadPage(pageId)
+    void loadPage(pageId).catch(() => undefined)
   }, [pageId, loadPage])
 
   useEffect(() => {
@@ -325,7 +326,19 @@ export function BlockList({ pageId }: { pageId: string }) {
 
   return (
     <div ref={rootRef} className="mt-4 flex flex-col pb-24" onKeyDown={handleShortcuts}>
-      {loading ? (
+      {loadError ? (
+        <div className="flex flex-col items-start gap-2 py-2">
+          <p className="text-sm text-error">{t('blocks.loadError')}</p>
+          <button
+            type="button"
+            data-load-retry
+            onClick={() => void loadPage(pageId).catch(() => undefined)}
+            className="rounded-md border border-border px-2 py-1 text-sm text-muted transition hover:bg-hover hover:text-ink"
+          >
+            {t('blocks.retry')}
+          </button>
+        </div>
+      ) : loading ? (
         <p className="text-sm text-faintest">{t('blocks.loading')}</p>
       ) : (
         blocks.map((block, index) => (

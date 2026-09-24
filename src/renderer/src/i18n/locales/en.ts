@@ -74,6 +74,8 @@ export const en = {
   },
   blocks: {
     loading: 'Loading blocks…',
+    loadError: 'Could not load this page.',
+    retry: 'Retry',
     handle: {
       label: 'Block options'
     },

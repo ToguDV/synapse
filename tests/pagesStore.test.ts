@@ -270,6 +270,41 @@ describe('pagesStore', () => {
     expect(usePagesStore.getState().activePageId).toBe('a')
   })
 
+  it('deletePage no borra si el flush previo del editor falla', async () => {
+    vi.useFakeTimers()
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { api } = installApi([
+      makePage({ id: 'a', position: 0 }),
+      makePage({ id: 'b', position: 1 })
+    ])
+    const { usePagesStore, useEditorStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    await useEditorStore.getState().loadPage('a')
+    useEditorStore.getState().setText('block-1', 'hola')
+    api.blocks.update.mockRejectedValueOnce(new Error('db caída'))
+
+    await expect(usePagesStore.getState().deletePage('a')).resolves.toBeUndefined()
+
+    expect(errorSpy).toHaveBeenCalled()
+    expect(api.pages.remove).not.toHaveBeenCalled()
+    expect(usePagesStore.getState().pages.map((page) => page.id)).toEqual(['a', 'b'])
+    expect(useEditorStore.getState().pageId).toBe('a')
+    expect(useEditorStore.getState().blocks.map((block) => block.text)).toEqual(['hola'])
+
+    api.blocks.update.mockResolvedValueOnce({
+      id: 'block-1',
+      pageId: 'a',
+      type: 'paragraph' as const,
+      content: '{"text":"hola"}',
+      position: 0,
+      indent: 0,
+      createdAt: 1,
+      updatedAt: 1
+    })
+    await useEditorStore.getState().loadPage('a')
+    expect(useEditorStore.getState().blocks).toHaveLength(1)
+  })
+
   // Regresión F5: si el usuario cambia de página durante el await del borrado,
   // el reset del editor no debe pisar la página que acaba de cargar.
   it('deletePage no resetea el editor si se cambió de página durante el borrado', async () => {
