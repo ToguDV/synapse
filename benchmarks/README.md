@@ -61,3 +61,25 @@ npm run bench:pages -- --sizes 10000,20000,50000 --profiles flat-per-page --star
 El reporte predeterminado es `/tmp/synapse-pages-stress-report.json`. Los
 datasets temporales se eliminan al terminar el runner, incluso si falla un
 perfil.
+
+## Resultados de la virtualización (2026-09-24)
+
+Barrido en Linux con AppImage y SQLite reales, Xvfb 1280×800 y renderizado por
+software. Las 18 combinaciones (3 perfiles × 6 tamaños) pasaron sus SLO. Comparación
+antes/después en 100 y 50.000 páginas:
+
+| Perfil | Páginas | Inicio p95 antes → después | Working set agregado antes → después |
+|---|---:|---:|---:|
+| `flat-fixed` | 100 | 383 → 375 ms | 537 → 524 MiB |
+| `flat-per-page` | 100 | 377 → 384 ms | 541 → 523 MiB |
+| `tree-per-page` | 100 | 403 → 376 ms | 537 → 526 MiB |
+| `flat-fixed` | 50.000 | 16,05 → 0,77 s | 4.689 → 652 MiB |
+| `flat-per-page` | 50.000 | 17,61 → 0,77 s | 4.657 → 656 MiB |
+| `tree-per-page` | 50.000 | 14,42 → 0,80 s | 4.898 → 659 MiB |
+
+En los perfiles de 50.000 páginas se montaron 26 filas del sidebar; la búsqueda
+visible quedó en p95 de 223–234 ms. La memoria de la tabla suma los working sets
+de los procesos Electron y puede contar páginas compartidas más de una vez. El
+reporte completo del barrido y la repetición final de 50.000 páginas se guardaron
+en `/tmp/synapse-pages-stress-virtualized.json` y
+`/tmp/synapse-pages-stress-virtualized-final-50k.json`, respectivamente.
