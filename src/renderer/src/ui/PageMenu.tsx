@@ -1,11 +1,8 @@
-import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
-import { Sheet } from './Sheet'
-import { useAnchoredPosition } from './rectAnchor'
+import { Popover } from './Popover'
 import { useTouchInput } from './useMediaQuery'
 
 interface PageMenuProps {
@@ -31,29 +28,6 @@ export function PageMenu({
 }: PageMenuProps) {
   const { t } = useTranslation()
   const asSheet = useTouchInput()
-  const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
-
-  useEffect(() => {
-    if (asSheet) return
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (ref.current && target instanceof Node && ref.current.contains(target)) return
-      onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopPropagation()
-        onClose()
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown, true)
-    }
-  }, [asSheet, onClose, ref])
 
   const items = (
     <>
@@ -103,23 +77,18 @@ export function PageMenu({
     </>
   )
 
-  if (asSheet) {
-    return (
-      <Sheet label={t('sidebar.pageOptions')} id="page-menu" onClose={onClose}>
-        {items}
-      </Sheet>
-    )
-  }
-
-  return createPortal(
-    <div
-      ref={ref}
-      data-page-menu={pageId}
-      style={style}
-      className="fixed z-50 w-56 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
+  return (
+    <Popover
+      anchor={anchor}
+      getAnchor={getAnchor}
+      align="right"
+      onClose={onClose}
+      data={{ 'data-page-menu': pageId }}
+      className="w-56 overflow-hidden"
+      sheetLabel={t('sidebar.pageOptions')}
+      sheetId="page-menu"
     >
       {items}
-    </div>,
-    document.body
+    </Popover>
   )
 }

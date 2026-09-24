@@ -1,10 +1,7 @@
-import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { TODO_STATUSES, type TodoStatus } from '../../../shared/content'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation, type MessageKey } from '../i18n'
-import { Sheet } from './Sheet'
-import { useAnchoredPosition } from './rectAnchor'
+import { Popover } from './Popover'
 import { useTouchInput } from './useMediaQuery'
 import { TodoStatusBox } from './TodoStatusBox'
 
@@ -27,29 +24,6 @@ interface StatusMenuProps {
 export function StatusMenu({ anchor, getAnchor, current, onSelect, onClose }: StatusMenuProps) {
   const { t } = useTranslation()
   const asSheet = useTouchInput()
-  const { ref, style } = useAnchoredPosition(anchor, { getAnchor })
-
-  useEffect(() => {
-    if (asSheet) return
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (ref.current && target instanceof Node && ref.current.contains(target)) return
-      onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopPropagation()
-        onClose()
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown, true)
-    }
-  }, [asSheet, onClose, ref])
 
   const items = TODO_STATUSES.map((status) => (
     <button
@@ -70,25 +44,19 @@ export function StatusMenu({ anchor, getAnchor, current, onSelect, onClose }: St
     </button>
   ))
 
-  if (asSheet) {
-    return (
-      <Sheet label={t('blocks.todo.statusLabel')} id="status-menu" onClose={onClose}>
-        {items}
-      </Sheet>
-    )
-  }
-
-  return createPortal(
-    <div
-      ref={ref}
-      data-status-menu
+  return (
+    <Popover
+      anchor={anchor}
+      getAnchor={getAnchor}
+      onClose={onClose}
+      data={{ 'data-status-menu': 'true' }}
       role="menu"
-      aria-label={t('blocks.todo.statusLabel')}
-      style={style}
-      className="fixed z-50 w-40 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
+      ariaLabel={t('blocks.todo.statusLabel')}
+      className="w-40 overflow-hidden"
+      sheetLabel={t('blocks.todo.statusLabel')}
+      sheetId="status-menu"
     >
       {items}
-    </div>,
-    document.body
+    </Popover>
   )
 }

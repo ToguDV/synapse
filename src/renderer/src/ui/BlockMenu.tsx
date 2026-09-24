@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useState } from 'react'
 import { useEditorStore } from '../editor/editorStore'
 import { BLOCK_MENU_ORDER, getBlockDefinition } from '../editor/registry'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { Icon } from './Icon'
 import { MenuItem } from './MenuItem'
-import { Sheet } from './Sheet'
-import { useAnchoredPosition } from './rectAnchor'
+import { Popover } from './Popover'
 import { useTouchInput } from './useMediaQuery'
 
 interface BlockMenuProps {
@@ -21,7 +19,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
   const { t } = useTranslation()
   const [view, setView] = useState<'main' | 'convert'>('main')
   const asSheet = useTouchInput()
-  const { ref, style } = useAnchoredPosition(anchor, { align: 'right', getAnchor })
   const blocks = useEditorStore((state) => state.blocks)
   const duplicateBlocks = useEditorStore((state) => state.duplicateBlocks)
   const deleteBlocks = useEditorStore((state) => state.deleteBlocks)
@@ -29,28 +26,6 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
   const convertBlock = useEditorStore((state) => state.convertBlock)
   const index = blocks.findIndex((block) => block.id === blockId)
   const block = index >= 0 ? blocks[index] : null
-
-  useEffect(() => {
-    if (asSheet) return
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (ref.current && target instanceof Node && ref.current.contains(target)) return
-      onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopPropagation()
-        onClose()
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown, true)
-    }
-  }, [asSheet, onClose, ref])
 
   if (!block) return null
 
@@ -142,23 +117,18 @@ export function BlockMenu({ blockId, anchor, getAnchor, onClose }: BlockMenuProp
       </>
     )
 
-  if (asSheet) {
-    return (
-      <Sheet label={t('blocks.handle.label')} id="block-menu" onClose={onClose}>
-        {items}
-      </Sheet>
-    )
-  }
-
-  return createPortal(
-    <div
-      ref={ref}
-      data-block-menu
-      style={style}
-      className="fixed z-50 w-[292px] overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
+  return (
+    <Popover
+      anchor={anchor}
+      getAnchor={getAnchor}
+      align="right"
+      onClose={onClose}
+      data={{ 'data-block-menu': 'true' }}
+      className="w-[292px] overflow-hidden"
+      sheetLabel={t('blocks.handle.label')}
+      sheetId="block-menu"
     >
       {items}
-    </div>,
-    document.body
+    </Popover>
   )
 }

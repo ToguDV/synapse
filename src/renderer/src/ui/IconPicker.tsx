@@ -1,11 +1,8 @@
-import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation } from '../i18n'
 import { PAGE_EMOJIS } from './emojis'
 import { Icon } from './Icon'
-import { Sheet } from './Sheet'
-import { useAnchoredPosition } from './rectAnchor'
+import { Popover } from './Popover'
 import { useTouchInput } from './useMediaQuery'
 
 interface IconPickerProps {
@@ -21,29 +18,6 @@ const PICKER_WIDTH = 296
 export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: IconPickerProps) {
   const { t } = useTranslation()
   const asSheet = useTouchInput()
-  const { ref, style } = useAnchoredPosition(anchor, { getAnchor })
-
-  useEffect(() => {
-    if (asSheet) return
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (ref.current && target instanceof Node && ref.current.contains(target)) return
-      onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        event.stopPropagation()
-        onClose()
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown, true)
-    }
-  }, [asSheet, onClose, ref])
 
   const items = (
     <>
@@ -78,23 +52,18 @@ export function IconPicker({ anchor, current, getAnchor, onSelect, onClose }: Ic
     </>
   )
 
-  if (asSheet) {
-    return (
-      <Sheet label={t('app.changeIcon')} id="icon-picker" onClose={onClose}>
-        {items}
-      </Sheet>
-    )
-  }
-
-  return createPortal(
-    <div
-      ref={ref}
-      data-icon-picker
-      style={{ ...style, width: PICKER_WIDTH }}
-      className="fixed z-[70] max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-pop"
+  return (
+    <Popover
+      anchor={anchor}
+      getAnchor={getAnchor}
+      onClose={onClose}
+      data={{ 'data-icon-picker': 'true' }}
+      width={PICKER_WIDTH}
+      className="z-[70] max-h-[70vh] overflow-y-auto"
+      sheetLabel={t('app.changeIcon')}
+      sheetId="icon-picker"
     >
       {items}
-    </div>,
-    document.body
+    </Popover>
   )
 }
