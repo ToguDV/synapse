@@ -77,7 +77,7 @@ export function splitBlock(
     type: getBlockDefinition(block.type).continuation,
     text: block.text.slice(caret),
     indent: block.indent,
-    ...(block.type === 'todo' ? { status: 'todo' as TodoStatus } : {})
+    ...(getBlockDefinition(block.type).hasStatus ? { status: 'todo' as TodoStatus } : {})
   })
   return { blocks: next, focus: { blockId: newBlockId, caret: 0 } }
 }

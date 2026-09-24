@@ -190,7 +190,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
             type: row.type,
             text: parsed.text,
             indent: row.indent,
-            ...(row.type === 'todo' ? { status: parsed.status } : {})
+            ...(getBlockDefinition(row.type).hasStatus ? { status: parsed.status } : {})
           }
         }),
         loading: false
@@ -341,25 +341,26 @@ export const useEditorStore = create<EditorState>((set, get) => {
       if (!found) return
       const definition = getBlockDefinition(found.block.type)
       const rule =
-        definition.textual && found.block.type !== 'code' ? matchInputRule(text) : null
+        definition.textual && definition.layout === 'text' ? matchInputRule(text) : null
       if (!rule || rule.type === found.block.type) {
         get().setText(id, text)
         return
       }
+      const ruleDefinition = getBlockDefinition(rule.type)
       clearSelection()
       pushHistory()
       lastTextEdit = null
       const sameType = get().blocks
-      if (rule.type === 'divider') {
+      if (ruleDefinition.appendsParagraph) {
         const paragraphId = createBlockId()
-        let blocks = tx.changeType(sameType, id, 'divider')
+        let blocks = tx.changeType(sameType, id, rule.type)
         blocks = tx.updateText(blocks, id, '')
         blocks = tx.insertAfter(blocks, id, [{ id: paragraphId, type: 'paragraph' }])
         commit(blocks, { blockId: paragraphId, caret: 0 })
         return
       }
       let blocks = tx.changeType(sameType, id, rule.type)
-      if (rule.type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
+      if (ruleDefinition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
       blocks = tx.updateText(blocks, id, rule.text)
       commit(blocks, { blockId: id, caret: rule.text.length })
     },
@@ -467,12 +468,13 @@ export const useEditorStore = create<EditorState>((set, get) => {
     convertBlock: (id, type) => {
       const found = tx.blockAt(get().blocks, id)
       if (!found || found.block.type === type) return
+      const definition = getBlockDefinition(type)
       clearSelection()
       pushHistory()
       lastTextEdit = null
-      if (type === 'divider') {
+      if (definition.appendsParagraph) {
         const following = tx.nearestTextualBlock(get().blocks, found.index + 1, 1)
-        let blocks = tx.changeType(get().blocks, id, 'divider')
+        let blocks = tx.changeType(get().blocks, id, type)
         blocks = tx.updateText(blocks, id, '')
         let focusId = following?.id
         if (!focusId) {
@@ -483,29 +485,30 @@ export const useEditorStore = create<EditorState>((set, get) => {
         return
       }
       let blocks = tx.changeType(get().blocks, id, type)
-      if (type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
+      if (definition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
       commit(blocks, { blockId: id, caret: found.block.text.length })
     },
 
     applySlashCommand: (id, type) => {
       const found = tx.blockAt(get().blocks, id)
       if (!found) return
+      const definition = getBlockDefinition(type)
       clearSelection()
       pushHistory()
       lastTextEdit = null
       const { block } = found
       const inPlace = block.text === ''
-      if (type === 'divider') {
+      if (definition.appendsParagraph) {
         if (inPlace) {
           const paragraphId = createBlockId()
-          let blocks = tx.changeType(get().blocks, id, 'divider')
+          let blocks = tx.changeType(get().blocks, id, type)
           blocks = tx.insertAfter(blocks, id, [{ id: paragraphId, type: 'paragraph' }])
           commit(blocks, { blockId: paragraphId, caret: 0 })
         } else {
           const dividerId = createBlockId()
           const paragraphId = createBlockId()
           const blocks = tx.insertAfter(get().blocks, id, [
-            { id: dividerId, type: 'divider', indent: 0 },
+            { id: dividerId, type, indent: 0 },
             { id: paragraphId, type: 'paragraph', indent: 0 }
           ])
           commit(blocks, { blockId: paragraphId, caret: 0 })
@@ -514,7 +517,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
       }
       if (inPlace) {
         let blocks = tx.changeType(get().blocks, id, type)
-        if (type === 'todo') blocks = tx.updateStatus(blocks, id, 'todo')
+        if (definition.hasStatus) blocks = tx.updateStatus(blocks, id, 'todo')
         commit(blocks, { blockId: id, caret: 0 })
         return
       }
@@ -524,7 +527,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
           id: newBlockId,
           type,
           indent: block.indent,
-          ...(type === 'todo' ? { status: 'todo' as const } : {})
+          ...(definition.hasStatus ? { status: 'todo' as const } : {})
         }
       ])
       commit(blocks, { blockId: newBlockId, caret: 0 })

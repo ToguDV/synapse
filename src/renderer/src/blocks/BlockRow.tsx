@@ -54,6 +54,7 @@ export function BlockRow({
 
   const definition = getBlockDefinition(block.type)
   const { t } = useTranslation()
+  const isTodo = definition.prefixKind === 'todo'
   const status = block.status ?? 'todo'
   const statusRef = useRef<HTMLButtonElement>(null)
   const [statusMenu, setStatusMenu] = useState<RectAnchor | null>(null)
@@ -88,7 +89,7 @@ export function BlockRow({
           deleteBlocks()
           return
         }
-        if (block.type === 'code' || event.shiftKey) {
+        if (definition.softLineBreaks || event.shiftKey) {
           if (insertPlainText('\n')) setText(block.id, readPlainText(element))
           return
         }
@@ -166,9 +167,9 @@ export function BlockRow({
   }
 
   let prefix: ReactNode = null
-  if (block.type === 'bullet') {
+  if (definition.prefixKind === 'bullet') {
     prefix = <span className="mt-[11px] h-[5px] w-[5px] shrink-0 rounded-full bg-faint" />
-  } else if (block.type === 'todo') {
+  } else if (definition.prefixKind === 'todo') {
     prefix = (
       <>
         <button
@@ -216,14 +217,13 @@ export function BlockRow({
     )
   }
 
-  const todoTextClasses =
-    block.type !== 'todo'
-      ? ''
-      : status === 'done'
-        ? 'text-faint line-through'
-        : status === 'cancelled'
-          ? 'text-faintest line-through'
-          : ''
+  const todoTextClasses = !isTodo
+    ? ''
+    : status === 'done'
+      ? 'text-faint line-through'
+      : status === 'cancelled'
+        ? 'text-faintest line-through'
+        : ''
 
   const body = (
     <div className="relative min-w-0 flex-1">
@@ -246,19 +246,17 @@ export function BlockRow({
   )
 
   let content: ReactNode
-  if (block.type === 'divider') {
+  if (definition.layout === 'divider') {
     content = (
       <div className="py-[10px]">
         <hr className="border-border-strong" />
       </div>
     )
-  } else if (block.type === 'code') {
-    content = (
-      <div className="my-2 w-full rounded-lg border border-border bg-code px-4 py-3.5">{body}</div>
-    )
+  } else if (definition.layout === 'boxed') {
+    content = <div className={definition.boxClasses}>{body}</div>
   } else {
     content = (
-      <div className={`flex items-start gap-[9px] py-[3px] ${block.type === 'heading' ? 'mt-[22px]' : ''}`}>
+      <div className={`flex items-start gap-[9px] py-[3px] ${definition.containerClasses ?? ''}`}>
         {prefix}
         {body}
       </div>
@@ -270,8 +268,8 @@ export function BlockRow({
       data-row-id={block.id}
       data-block-type={block.type}
       data-selected={selected ? 'true' : undefined}
-      data-checked={block.type === 'todo' ? String(status === 'done') : undefined}
-      data-status={block.type === 'todo' ? status : undefined}
+      data-checked={isTodo ? String(status === 'done') : undefined}
+      data-status={isTodo ? status : undefined}
       onMouseDown={handleMouseDown}
       style={{ marginLeft: block.indent * 24 }}
       className={`group relative rounded-md ${selected ? 'bg-selected shadow-[inset_2px_0_0_var(--accent)]' : ''} ${
