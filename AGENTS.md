@@ -20,7 +20,7 @@ docker compose down                                # parar (los volúmenes persi
 - `ELECTRON_DISABLE_GPU=1` (solo dev): sin `/dev/dri` en el contenedor, Chromium debe renderizar por software.
 - npm ≥11 bloquea postinstalls de terceros: `allowScripts` en package.json aprueba `electron`/`esbuild`/`electron-winstaller`/`better-sqlite3`, y el `postinstall` propio garantiza que el binario de Electron (`node_modules/electron/dist`) se extraiga y que `better-sqlite3` se reconstruya contra el ABI de Electron en cualquier `npm install` limpio.
 - Los avisos de `dbus/bus.cc` en logs son cosméticos (no hay dbus en el contenedor).
-- E2E (Playwright, headless, sin Electron): sirve solo el renderer en el contenedor y lanza los runners desde el host (usan el Chromium cacheado en `~/.npm/_npx`):
+- E2E (Playwright, headless, sin Electron): sirve solo el renderer en el contenedor y lanza los runners desde el host. Los runners resuelven Playwright con `e2e/playwright.cjs` (dep del proyecto → `SYNAPSE_PLAYWRIGHT` → caché de `npx`), así que ya no dependen de esta máquina:
   ```bash
   docker compose run -d --rm --name synapse-e2e dev npx vite --config tests/vite.e2e.config.ts
   node e2e/phase3.e2e.cjs && node e2e/phase4.e2e.cjs && node e2e/phase5.e2e.cjs && node e2e/phase6.e2e.cjs  # 42, 53, 48 y 29 checks
@@ -28,12 +28,14 @@ docker compose down                                # parar (los volúmenes persi
   node e2e/anchor-tracking.e2e.cjs                                                  # 18 checks (popovers: scroll/resize)
   node e2e/page-dnd.e2e.cjs                                                         # 21 checks (drag & drop de páginas)
   node e2e/mobile.e2e.cjs                                                           # 30 checks (drawer, sheets, gestos táctiles)
+  node e2e/sidebar-virtualization.e2e.cjs                                           # 12 checks (filas montadas de la ventana)
   node e2e/adv-phase4.e2e.cjs                                                       # 133 checks (adversarial de bloques)
-  node e2e/adv-selection.e2e.cjs                                                    # 39 checks (3 latentes O2–O4, sin UI)
+  node e2e/adv-selection.e2e.cjs                                                    # 53 checks (selección/reemplazo, todos verdes)
   docker stop synapse-e2e
   ```
+- Capturas del README: `node e2e/screenshots.cjs` (mismo server E2E) regenera `docs/media/editor-dark.png`, `editor-light.png` y `mobile.png` sembrando `e2e/mock-api.js` a `deviceScaleFactor: 2`; regenerarlas si la UI cambia de forma visible.
 - Smoke del paquete (sin instalarlo): `HOME=$(mktemp -d) timeout 20 ./release/Synapse-*-x86_64.AppImage --appimage-extract-and-run --no-sandbox` debe crear `$HOME/.config/synapse/synapse.db` con `pages`/`blocks`/`settings` (sale por timeout al seguir la app abierta; es lo esperado).
-- `AGENTS.md` es local y está en `.gitignore`: no se versiona (junto a `CLAUDE.md`, `.opencode/`, etc.); las constancias del proyecto se mantienen en este archivo.
+- `AGENTS.md` **se versiona** desde 2026-09-24 (se quitó del `.gitignore` junto al resto de herramientas de agentes); las constancias del proyecto se mantienen en este archivo.
 
 ## 1. Stack decidido
 
@@ -179,6 +181,7 @@ synapse/
 - **Benchmark de escalabilidad tras virtualizar**: las 18 combinaciones (3 perfiles × 6 tamaños) pasan sus SLO hasta 50.000 páginas; con 50.000, startup p95 baja de 14,4–17,6 s a 0,75–0,86 s y memoria agregada de 4,6–4,9 GiB a 639–664 MiB (~86% menos). La repetición final tras el ajuste de auto-scroll mantiene 26 filas montadas, startup p95 de 0,77–0,80 s y memoria de 652–659 MiB. Informe completo `/tmp/synapse-pages-stress-virtualized.json`; repetición final de 50.000 páginas `/tmp/synapse-pages-stress-virtualized-final-50k.json`.
 - **Puerto**: el servidor E2E de `tests/vite.e2e.config.ts` usa el 5174 (el dev normal usa 5173).
 - **Suites adversariales** (mismos requisitos que las oficiales): `node e2e/adv-phase4.e2e.cjs` (133 checks; usa `[data-slash-item][data-active="true"]`, no clases CSS, para el ítem activo) y `node e2e/adv-selection.e2e.cjs` (53 checks de selección/reemplazo; todos verdes).
+- **CI (GitHub Actions)**: en cada push/PR a `main` corre `npm ci --ignore-scripts` + `npm run typecheck` + `npm test` (sección 10). Es la verificación mínima que hay que dejar verde en local antes de commitear; los E2E no corren en CI.
 
 ## 7. Convenciones de commits y flujo
 
@@ -208,5 +211,13 @@ Revisión de duplicación/patrones/desacoplamiento (code-reviewer). Todo el list
 - **`ui/usePageDrag.ts`** (`refactor(ui) 0006924`): la máquina de DnD de páginas (~180 líneas) sale de `Sidebar.tsx` (drag, long-press, zonas, auto-expand, bloqueo de scroll, drop, Escape); devuelve `drag`, `handleDragPointerDown`, `suppressClickRef` e `isBusy`. `DRAG_THRESHOLD_PX`/`TOUCH_DRAG_THRESHOLD_PX` se exportan de allí y `BlockList` los importa.
 - **`createDebouncer`** (`refactor(shared) 120b1dc`): `src/shared/debounce.ts` (`schedule`/`cancel`) unifica el autosave (400 ms), los renames por página (Map de debouncers, 500 ms) y el debounce de búsqueda (120 ms).
 - **IPC robusto** (`refactor(ipc) bcfbf12`): `requireObject` lanza error descriptivo si el payload llega `undefined` (antes TypeError por destructuring); `settings:set` ya no hardcodea el tema — `registerIpc(db, { onSettingChanged })` y `main/index.ts` posee el wiring de `applyThemePreference`.
-- **Sidebar virtualizado** (2026-09-24): aplanado de las filas expandidas, virtualización fija de 30px/overscan 8, foco accesible a través de filas fuera de ventana y auto-scroll de DnD para ratón/táctil. Los descendientes prohibidos se cachean por arrastre y `collectDescendantIds` evita `Array.shift()`. Tests: 222 unit y nuevo `e2e/sidebar-virtualization.e2e.cjs` (12 checks); las suites existentes de páginas, DnD, móvil, popovers y búsqueda pasan.
+- **Sidebar virtualizado** (2026-09-24): aplanado de las filas expandidas, virtualización fija de 30px/overscan 8, foco accesible a través de filas fuera de ventana y auto-scroll de DnD para ratón/táctil. Los descendientes prohibidos se cachean por arrastre y `collectDescendantIds` evita `Array.shift()`. Tests: 230 unit y nuevo `e2e/sidebar-virtualization.e2e.cjs` (12 checks); las suites existentes de páginas, DnD, móvil, popovers y búsqueda pasan.
 - **Lo que está bien y no tocar**: `transforms.ts` puro con identidad estable, el contrato `Api` + preload fino, `shared/content.ts` como único punto de serialización, repos SQLite consistentes (prepared statements + transacciones), `rectAnchor.ts` genérico (base del `Popover`).
+
+## 10. Repositorio público y CI
+
+- **Repo**: `https://github.com/ToguDV/synapse` (público, rama `main`), licencia **MIT** (`LICENSE`) con `THIRD_PARTY_NOTICES.md` para las fuentes OFL (Inter, JetBrains Mono, Noto Color Emoji). El `README.md` (en inglés, con capturas) documenta features, stack, arquitectura, setup, tests, build y roadmap; `AGENTS.md` y `DESIGN.md` siguen en español y se enlazan desde ahí.
+- **CI**: `.github/workflows/ci.yml` (GitHub Actions), job `unit` en push/PR a `main`: `ubuntu-latest` + Node 24, `npm ci --ignore-scripts` (no descarga Electron ni recompila better-sqlite3: los tests usan los prebuilds N-API del paquete), `npm run typecheck` y `npm test` (verificado en limpio en el contenedor). Los E2E no corren en CI por ahora; si se añaden, `e2e/playwright.cjs` ya los hace portables (dep local → `SYNAPSE_PLAYWRIGHT` → caché de npx).
+- **Reglas**: no romper la CI — es la misma verificación mínima que hay que dejar verde en local antes de commitear; el badge del README apunta a `ci.yml`, así que renombrar el workflow o el job obliga a actualizarlo. `gh` está autenticado como `ToguDV` en esta máquina.
+- **Metadatos**: `package.json` lleva `license: MIT`, `repository`/`bugs`/`keywords`/`engines` (Node ≥24); `electron-builder.yml` usa el maintainer `ToguDV <ToguDV@users.noreply.github.com>`.
+- **Capturas**: `docs/media/*.png` se regeneran con `node e2e/screenshots.cjs` (requiere el server E2E en 5174) y están referenciadas en el README.
