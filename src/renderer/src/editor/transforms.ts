@@ -51,7 +51,12 @@ export function updateStatus(blocks: EditorBlock[], id: string, status: TodoStat
 export function changeType(blocks: EditorBlock[], id: string, type: BlockType): EditorBlock[] {
   const found = blockAt(blocks, id)
   if (!found || found.block.type === type) return blocks
-  return blocks.map((block) => (block.id === id ? { ...block, type } : block))
+  return blocks.map((block) => {
+    if (block.id !== id) return block
+    const next: EditorBlock = { ...block, type }
+    if (type !== 'todo' && next.status !== undefined) delete next.status
+    return next
+  })
 }
 
 export function splitBlock(

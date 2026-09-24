@@ -49,6 +49,21 @@ describe('blockAt / updateText / changeType', () => {
     expect(blocks[0].type).toBe('paragraph')
     expect(changeType(blocks, 'a', 'paragraph')).toBe(blocks)
   })
+
+  it('changeType descarta status al convertir a un tipo que no es todo', () => {
+    const done = [make('a', 'uno', { type: 'todo', status: 'done' })]
+
+    const toParagraph = changeType(done, 'a', 'paragraph')
+    expect(toParagraph[0].type).toBe('paragraph')
+    expect('status' in toParagraph[0]).toBe(false)
+
+    const sameType = changeType(done, 'a', 'todo')
+    expect(sameType).toBe(done)
+
+    const toBullet = changeType([make('a', 'uno', { type: 'todo', status: 'in-progress' })], 'a', 'bullet')
+    expect(toBullet[0].type).toBe('bullet')
+    expect('status' in toBullet[0]).toBe(false)
+  })
 })
 
 describe('splitBlock', () => {
