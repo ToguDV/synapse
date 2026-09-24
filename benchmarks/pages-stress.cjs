@@ -693,14 +693,18 @@ async function benchmarkProcess({ appImageName, home, pageCount, firstRun, optio
       cdp,
       `(() => {
         const editor = document.querySelector('div[contenteditable]')
-        const pageRows = document.querySelectorAll('[data-page-depth]').length
-        return editor && pageRows >= ${pageCount}
-          ? { pageRows, editorBlockId: editor.getAttribute('data-block-id') }
+        const pageList = document.querySelector('[data-page-list]')
+        const pageRows = Number(pageList?.getAttribute('data-page-count'))
+        const renderedRows = document.querySelectorAll('[data-page-depth]').length
+        const declaredRenderedRows = Number(pageList?.getAttribute('data-page-rendered'))
+        return editor && pageRows === ${pageCount} && renderedRows > 0 &&
+          renderedRows === declaredRenderedRows
+          ? { pageRows, renderedRows, editorBlockId: editor.getAttribute('data-block-id') }
           : null
       })()`,
       {
         timeoutMs: STARTUP_TIMEOUT_MS,
-        description: `usable editor and ${pageCount} rendered sidebar rows`
+        description: `usable editor and ${pageCount} visible sidebar pages`
       }
     )
 
@@ -716,6 +720,7 @@ async function benchmarkProcess({ appImageName, home, pageCount, firstRun, optio
         return ready ? Number((ready.observedAt - session.startedAt).toFixed(2)) : null
       })(),
       sidebarRows: usable.value.pageRows,
+      sidebarRenderedRows: usable.value.renderedRows,
       initialEditorBlockId: usable.value.editorBlockId,
       main: setMainMetrics(session.run)
     }
@@ -806,13 +811,23 @@ async function benchmarkCase({ appImageName, containerRoot, pageCount, profile, 
       runs.push(measured)
       if (measured.failure) throw new Error(measured.failure)
       if (measured.startup.sidebarRows !== pageCount) {
-        throw new Error(`Expected ${pageCount} sidebar rows, got ${measured.startup.sidebarRows}`)
+        throw new Error(
+          `Expected ${pageCount} visible sidebar pages, got ${measured.startup.sidebarRows}`
+        )
+      }
+      if (
+        pageCount > 200 &&
+        (measured.startup.sidebarRenderedRows < 1 || measured.startup.sidebarRenderedRows > 50)
+      ) {
+        throw new Error(
+          `Expected 1-50 virtualized rows for ${pageCount} pages, mounted ${measured.startup.sidebarRenderedRows}`
+        )
       }
       if (measured.runtimeErrors.length > 0) {
         throw new Error(`Renderer errors: ${measured.runtimeErrors.join(' | ')}`)
       }
       process.stdout.write(
-        `      usable=${measured.startup.mainStartToUsableMs === null ? 'n/a' : `${measured.startup.mainStartToUsableMs}ms`}, ready=${measured.startup.mainStartToWindowReadyMs === null ? 'n/a' : `${measured.startup.mainStartToWindowReadyMs}ms`}, sidebar=${measured.startup.sidebarRows}\n`
+        `      usable=${measured.startup.mainStartToUsableMs === null ? 'n/a' : `${measured.startup.mainStartToUsableMs}ms`}, ready=${measured.startup.mainStartToWindowReadyMs === null ? 'n/a' : `${measured.startup.mainStartToWindowReadyMs}ms`}, sidebar=${measured.startup.sidebarRows} pages/${measured.startup.sidebarRenderedRows} rows mounted\n`
       )
     } catch (error) {
       failure = error instanceof Error ? error.message : String(error)

@@ -10,6 +10,11 @@ export interface PageNode {
   children: PageNode[]
 }
 
+export interface VisiblePageNode {
+  node: PageNode
+  depth: number
+}
+
 function createsCycle(byId: Map<string, Page>, page: Page): boolean {
   const seen = new Set([page.id])
   let current = page.parentId
@@ -50,6 +55,31 @@ export function flattenPages(pages: Page[]): Page[] {
     }
   }
   visit(buildPageTree(pages))
+  return result
+}
+
+export function flattenVisiblePageTree(
+  roots: PageNode[],
+  expandedIds: readonly string[]
+): VisiblePageNode[] {
+  const expanded = new Set(expandedIds)
+  const result: VisiblePageNode[] = []
+  const stack: VisiblePageNode[] = []
+
+  for (let index = roots.length - 1; index >= 0; index -= 1) {
+    stack.push({ node: roots[index], depth: 0 })
+  }
+
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    result.push(current)
+    if (!expanded.has(current.node.page.id)) continue
+
+    for (let index = current.node.children.length - 1; index >= 0; index -= 1) {
+      stack.push({ node: current.node.children[index], depth: current.depth + 1 })
+    }
+  }
+
   return result
 }
 

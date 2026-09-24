@@ -36,8 +36,9 @@ tamaño hasta 50.000 o hasta un fallo/timeout de la app.
 
 El benchmark informa mediana y p95. Los criterios iniciales de “usable” son:
 
-- editor y todas las filas del sidebar listos en p95 ≤ 3 s, medidos desde el
-  inicio del módulo main de la app;
+- editor y ventana virtual visible del sidebar listos en p95 ≤ 3 s, medidos
+  desde el inicio del módulo main de la app; el reporte incluye el total de
+  páginas visibles y las filas montadas en el DOM;
 - resultados visibles en p95 ≤ 1 s, incluyendo el debounce de búsqueda actual
   (120 ms).
 
@@ -45,9 +46,9 @@ Los resultados también muestran el tiempo desde el comando de lanzamiento hasta
 el editor listo. Ese valor incluye Docker, Xvfb y `--appimage-extract-and-run`,
 por lo que se reporta aparte y no se usa para el umbral de 3 s. `ready-to-show`,
 `pages:list`, `blocks:list`, búsqueda en main, navegación, memoria de procesos
-Electron, errores del renderer y filas reales del sidebar quedan incluidos en
-el JSON. La memoria reportada suma los working sets de los procesos Electron;
-puede contar páginas compartidas más de una vez.
+Electron, errores del renderer, páginas del árbol y filas virtualizadas del
+sidebar quedan incluidos en el JSON. La memoria reportada suma los working sets
+de los procesos Electron; puede contar páginas compartidas más de una vez.
 
 ```bash
 # Smoke pequeño del harness

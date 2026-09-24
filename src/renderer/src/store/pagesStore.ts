@@ -13,6 +13,7 @@ import {
 interface PagesState {
   pages: Page[]
   activePageId: string | null
+  selectionVersion: number
   ready: boolean
   expandedIds: string[]
   initialize: () => Promise<void>
@@ -50,6 +51,7 @@ function parentsWithChildren(pages: Page[]): string[] {
 export const usePagesStore = create<PagesState>((set, get) => ({
   pages: [],
   activePageId: null,
+  selectionVersion: 0,
   ready: false,
   expandedIds: [],
 
@@ -72,10 +74,10 @@ export const usePagesStore = create<PagesState>((set, get) => ({
   },
 
   selectPage: (id) => {
-    const { pages, expandedIds } = get()
+    const { pages, expandedIds, selectionVersion } = get()
     const ancestors = pageAncestors(pages, id).map((page) => page.id)
     const merged = new Set([...expandedIds, ...ancestors])
-    set({ activePageId: id, expandedIds: [...merged] })
+    set({ activePageId: id, expandedIds: [...merged], selectionVersion: selectionVersion + 1 })
   },
 
   createPage: async (parentId = null) => {

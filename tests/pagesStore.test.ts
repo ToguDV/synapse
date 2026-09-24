@@ -210,6 +210,18 @@ describe('pagesStore', () => {
     expect(usePagesStore.getState().expandedIds.sort()).toEqual(['child', 'root'])
   })
 
+  it('selectPage actualiza la revisión incluso al volver a seleccionar la página activa', async () => {
+    installApi([makePage({ id: 'root' })])
+    const { usePagesStore } = await loadStores()
+    await usePagesStore.getState().initialize()
+    const before = usePagesStore.getState().selectionVersion
+
+    usePagesStore.getState().selectPage('root')
+
+    expect(usePagesStore.getState().activePageId).toBe('root')
+    expect(usePagesStore.getState().selectionVersion).toBe(before + 1)
+  })
+
   it('toggleExpanded alterna la página', async () => {
     installApi([makePage({ id: 'root' })])
     const { usePagesStore } = await loadStores()

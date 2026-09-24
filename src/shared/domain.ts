@@ -33,12 +33,12 @@ export function collectDescendantIds(pages: readonly Page[], id: string): string
   const result: string[] = []
   const seen = new Set([id])
   const queue = [...(childrenOf.get(id) ?? [])]
-  while (queue.length > 0) {
-    const next = queue.shift()!
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const next = queue[cursor]
     if (seen.has(next)) continue
     seen.add(next)
     result.push(next)
-    queue.push(...(childrenOf.get(next) ?? []))
+    for (const child of childrenOf.get(next) ?? []) queue.push(child)
   }
   return result
 }

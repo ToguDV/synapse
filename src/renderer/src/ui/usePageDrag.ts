@@ -6,6 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent
 } from 'react'
 import { comparePageOrder } from '../../../shared/domain'
+import type { Page } from '../../../shared/types'
 import { collectDescendantIds } from '../store/pageTree'
 import { usePagesStore } from '../store/pagesStore'
 
@@ -40,6 +41,13 @@ export interface PageDropTarget {
 
 interface PageDragOptions {
   onLongPress?: (pageId: string, target: HTMLButtonElement) => void
+  getScrollContainer?: () => HTMLElement | null
+}
+
+interface ForbiddenPageCache {
+  pageId: string
+  pages: Page[]
+  ids: Set<string>
 }
 
 export function usePageDrag(options: PageDragOptions = {}) {
@@ -49,11 +57,16 @@ export function usePageDrag(options: PageDragOptions = {}) {
   const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragRef = useRef<PageDragState | null>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoScrollFrameRef = useRef<number | null>(null)
+  const pointerPositionRef = useRef<{ x: number; y: number } | null>(null)
+  const forbiddenPageCacheRef = useRef<ForbiddenPageCache | null>(null)
   const suppressClickRef = useRef(false)
   const onLongPressRef = useRef(options.onLongPress)
+  const getScrollContainerRef = useRef(options.getScrollContainer)
 
   useEffect(() => {
     onLongPressRef.current = options.onLongPress
+    getScrollContainerRef.current = options.getScrollContainer
   })
 
   const cancelArm = useCallback(() => {
@@ -81,15 +94,116 @@ export function usePageDrag(options: PageDragOptions = {}) {
       }
     }
 
+    const stopAutoScroll = (): void => {
+      if (autoScrollFrameRef.current !== null) {
+        cancelAnimationFrame(autoScrollFrameRef.current)
+        autoScrollFrameRef.current = null
+      }
+    }
+
     const endDrag = (): void => {
       clearExpandTimer()
+      stopAutoScroll()
+      pointerPositionRef.current = null
+      forbiddenPageCacheRef.current = null
       document.removeEventListener('touchmove', blockScroll)
       document.body.classList.remove('select-none', 'cursor-grabbing')
+    }
+
+    let autoScroll = (): void => undefined
+    const scheduleAutoScroll = (): void => {
+      if (autoScrollFrameRef.current !== null) return
+      autoScrollFrameRef.current = requestAnimationFrame(autoScroll)
+    }
+
+    const updateDropTarget = (clientX: number, clientY: number): void => {
+      const pending = pendingDragRef.current
+      if (!pending) return
+      const state = usePagesStore.getState()
+      let forbiddenCache = forbiddenPageCacheRef.current
+      if (
+        !forbiddenCache ||
+        forbiddenCache.pageId !== pending.pageId ||
+        forbiddenCache.pages !== state.pages
+      ) {
+        forbiddenCache = {
+          pageId: pending.pageId,
+          pages: state.pages,
+          ids: new Set([pending.pageId, ...collectDescendantIds(state.pages, pending.pageId)])
+        }
+        forbiddenPageCacheRef.current = forbiddenCache
+      }
+      const forbidden = forbiddenCache.ids
+      const element = document.elementFromPoint(clientX, clientY)
+      const row = element instanceof Element ? element.closest('[data-page-id]') : null
+      const overId = row instanceof HTMLElement ? (row.dataset.pageId ?? null) : null
+      let next: PageDragState = { pageId: pending.pageId, overId: null, zone: 'before' }
+      if (overId && !forbidden.has(overId) && row instanceof HTMLElement) {
+        const rect = row.getBoundingClientRect()
+        const ratio = (clientY - rect.top) / Math.max(rect.height, 1)
+        next = {
+          pageId: pending.pageId,
+          overId,
+          zone: ratio < 0.3 ? 'before' : ratio > 0.7 ? 'after' : 'inside'
+        }
+      }
+      const previous = dragRef.current
+      if (
+        previous?.overId === next.overId &&
+        previous?.zone === next.zone &&
+        previous?.pageId === next.pageId
+      ) {
+        return
+      }
+      dragRef.current = next
+      setDrag(next)
+      clearExpandTimer()
+      if (next.overId && next.zone === 'inside') {
+        const targetId = next.overId
+        const { pages: current, expandedIds } = usePagesStore.getState()
+        const hasChildren = current.some((page) => page.parentId === targetId)
+        if (hasChildren && !expandedIds.includes(targetId)) {
+          expandTimerRef.current = setTimeout(() => {
+            expandTimerRef.current = null
+            usePagesStore.getState().toggleExpanded(targetId)
+            scheduleAutoScroll()
+          }, AUTO_EXPAND_MS)
+        }
+      }
+    }
+
+    autoScroll = (): void => {
+      autoScrollFrameRef.current = null
+      const pending = pendingDragRef.current
+      const pointer = pointerPositionRef.current
+      const element = getScrollContainerRef.current?.()
+      if (!pending || !dragRef.current || !pointer || !element) return
+
+      const rect = element.getBoundingClientRect()
+      const edge = Math.min(56, rect.height / 4)
+      if (edge <= 0) return
+      let strength = 0
+      if (pointer.y < rect.top + edge) {
+        strength = -Math.min(1, (rect.top + edge - pointer.y) / edge)
+      } else if (pointer.y > rect.bottom - edge) {
+        strength = Math.min(1, (pointer.y - (rect.bottom - edge)) / edge)
+      }
+      if (strength === 0) return
+
+      const step = Math.sign(strength) * Math.max(2, Math.ceil(Math.abs(strength) * 14))
+      const maxScroll = Math.max(0, element.scrollHeight - element.clientHeight)
+      const nextScrollTop = Math.min(maxScroll, Math.max(0, element.scrollTop + step))
+      if (nextScrollTop === element.scrollTop) return
+
+      element.scrollTop = nextScrollTop
+      updateDropTarget(pointer.x, pointer.y)
+      scheduleAutoScroll()
     }
 
     const onMove = (event: PointerEvent) => {
       const pending = pendingDragRef.current
       if (pending && pending.pointerId !== event.pointerId) return
+      pointerPositionRef.current = { x: event.clientX, y: event.clientY }
       if (!pending) {
         const touch = pendingTouchRef.current
         if (touch && touch.pointerId === event.pointerId) {
@@ -107,38 +221,8 @@ export function usePageDrag(options: PageDragOptions = {}) {
         document.body.classList.add('select-none', 'cursor-grabbing')
         suppressClickRef.current = true
       }
-      const state = usePagesStore.getState()
-      const forbidden = new Set([
-        pending.pageId,
-        ...collectDescendantIds(state.pages, pending.pageId)
-      ])
-      const element = document.elementFromPoint(event.clientX, event.clientY)
-      const row = element instanceof Element ? element.closest('[data-page-id]') : null
-      const overId = row instanceof HTMLElement ? (row.dataset.pageId ?? null) : null
-      let next: PageDragState = { pageId: pending.pageId, overId: null, zone: 'before' }
-      if (overId && !forbidden.has(overId) && row instanceof HTMLElement) {
-        const rect = row.getBoundingClientRect()
-        const ratio = (event.clientY - rect.top) / Math.max(rect.height, 1)
-        next = {
-          pageId: pending.pageId,
-          overId,
-          zone: ratio < 0.3 ? 'before' : ratio > 0.7 ? 'after' : 'inside'
-        }
-      }
-      dragRef.current = next
-      setDrag(next)
-      clearExpandTimer()
-      if (next.overId && next.zone === 'inside') {
-        const targetId = next.overId
-        const { pages: current, expandedIds } = usePagesStore.getState()
-        const hasChildren = current.some((page) => page.parentId === targetId)
-        if (hasChildren && !expandedIds.includes(targetId)) {
-          expandTimerRef.current = setTimeout(() => {
-            expandTimerRef.current = null
-            usePagesStore.getState().toggleExpanded(targetId)
-          }, AUTO_EXPAND_MS)
-        }
-      }
+      updateDropTarget(event.clientX, event.clientY)
+      scheduleAutoScroll()
     }
 
     const onUp = () => {

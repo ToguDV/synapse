@@ -1,8 +1,13 @@
 import {
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent
@@ -12,7 +17,12 @@ import type { RectAnchor } from '../editor/types'
 import { useTranslation, type MessageKey } from '../i18n'
 import { usePagesStore } from '../store/pagesStore'
 import { useThemeStore } from '../store/themeStore'
-import { buildPageTree, collectDescendantIds, type PageNode } from '../store/pageTree'
+import {
+  buildPageTree,
+  collectDescendantIds,
+  flattenVisiblePageTree,
+  type PageNode
+} from '../store/pageTree'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Icon, type IconName } from './Icon'
 import { IconPicker } from './IconPicker'
@@ -24,6 +34,20 @@ import { useIsMobile } from './useMediaQuery'
 import { usePageDrag, type PageDropTarget } from './usePageDrag'
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
+const PAGE_ROW_HEIGHT = 30
+const PAGE_ROW_OVERSCAN = 8
+const INITIAL_PAGE_VIEWPORT_HEIGHT = 480
+
+interface PageFocusRequest {
+  pageId: string
+  edge: 'first' | 'last'
+}
+
+function focusPageRowEdge(row: HTMLElement, edge: PageFocusRequest['edge']): void {
+  const focusable = row.querySelectorAll<HTMLElement>('[data-page-focusable]')
+  const target = edge === 'first' ? focusable[0] : focusable[focusable.length - 1]
+  target?.focus()
+}
 
 const THEME_META: Record<ThemePreference, { icon: IconName; labelKey: MessageKey }> = {
   system: { icon: 'monitor', labelKey: 'theme.system' },
@@ -79,6 +103,7 @@ function RenameInput({
   return (
     <input
       data-page-rename
+      data-page-focusable
       autoFocus
       value={value}
       onChange={(event) => setValue(event.target.value)}
@@ -87,7 +112,7 @@ function RenameInput({
         if (!cancelled.current) onCommit(value)
       }}
       onKeyDown={(event) => {
-        event.stopPropagation()
+        if (event.key !== 'Tab') event.stopPropagation()
         if (event.key === 'Enter') {
           event.preventDefault()
           event.currentTarget.blur()
@@ -107,6 +132,8 @@ function RenameInput({
 interface PageTreeItemProps {
   node: PageNode
   depth: number
+  index: number
+  style: CSSProperties
   renamingId: string | null
   draggingId: string | null
   drop: PageDropTarget | null
@@ -121,6 +148,8 @@ interface PageTreeItemProps {
 function PageTreeItem({
   node,
   depth,
+  index,
+  style,
   renamingId,
   draggingId,
   drop,
@@ -151,110 +180,93 @@ function PageTreeItem({
   }
 
   return (
-    <div>
-      <div
-        data-page-id={page.id}
-        data-page-depth={depth}
-        data-page-drop={dropZone ?? undefined}
-        data-page-dragging={isDragging ? 'true' : undefined}
-        data-active={isActive}
-        style={{ marginLeft: depth * 16 }}
-        className={`group relative flex h-[30px] items-center gap-1.5 rounded-md px-2 transition ${
-          dropZone === 'inside'
-            ? 'bg-selected text-ink ring-1 ring-inset ring-sapphire'
-            : isActive
-              ? 'bg-selected text-ink'
-              : 'text-muted hover:bg-hover hover:text-ink'
-        } ${isDragging ? 'opacity-40' : ''}`}
-      >
-        {dropZone === 'before' && (
-          <span className="pointer-events-none absolute inset-x-1 -top-px h-0.5 rounded-full bg-sapphire" />
-        )}
-        {dropZone === 'after' && (
-          <span className="pointer-events-none absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-sapphire" />
-        )}
-        {hasChildren ? (
-          <button
-            type="button"
-            data-page-toggle
-            data-expanded={expanded}
-            aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
-            onClick={() => toggleExpanded(page.id)}
-            className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
-          >
-            <Icon name={expanded ? 'chev-down' : 'chev-right'} size={16} strokeWidth={2.4} />
-          </button>
-        ) : (
-          <span className="h-5 w-4 shrink-0" />
-        )}
-        {isRenaming ? (
-          <RenameInput
-            initial={page.title}
-            onCommit={(title) => onRenameCommit(page.id, title)}
-            onCancel={onRenameCancel}
-          />
-        ) : (
-          <button
-            type="button"
-            data-page-title
-            onPointerDown={(event) => onDragPointerDown(page.id, event)}
-            onClick={() => {
-              if (suppressClickRef.current) {
-                suppressClickRef.current = false
-                return
-              }
-              selectPage(page.id)
-            }}
-            onDoubleClick={() => onStartRename(page.id)}
-            className="flex h-full min-w-0 flex-1 touch-pan-y items-center gap-1.5 py-1 text-left text-sm font-semibold select-none"
-          >
-            {page.icon && (
-              <span data-page-icon className="shrink-0 text-sm leading-none">
-                {page.icon}
-              </span>
-            )}
-            <span className="truncate">{page.title || t('common.untitled')}</span>
-          </button>
-        )}
-        <button
-          type="button"
-          data-page-action="add-child"
-          title={t('sidebar.addSubpage')}
-          onClick={() => void createPage(page.id)}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
-        >
-          <Icon name="plus" size={14} />
-        </button>
-        <button
-          type="button"
-          data-page-action="open-menu"
-          title={t('sidebar.pageOptions')}
-          onClick={openMenu}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
-        >
-          <Icon name="more" size={14} />
-        </button>
-      </div>
-      {hasChildren && expanded && (
-        <div>
-          {children.map((child) => (
-            <PageTreeItem
-              key={child.page.id}
-              node={child}
-              depth={depth + 1}
-              renamingId={renamingId}
-              draggingId={draggingId}
-              drop={drop}
-              suppressClickRef={suppressClickRef}
-              onStartRename={onStartRename}
-              onRenameCommit={onRenameCommit}
-              onRenameCancel={onRenameCancel}
-              onOpenMenu={onOpenMenu}
-              onDragPointerDown={onDragPointerDown}
-            />
-          ))}
-        </div>
+    <div
+      data-page-id={page.id}
+      data-page-depth={depth}
+      data-page-index={index}
+      data-page-drop={dropZone ?? undefined}
+      data-page-dragging={isDragging ? 'true' : undefined}
+      data-active={isActive}
+      style={{ ...style, marginLeft: depth * 16 }}
+      className={`group relative flex h-[30px] items-center gap-1.5 rounded-md px-2 transition ${
+        dropZone === 'inside'
+          ? 'bg-selected text-ink ring-1 ring-inset ring-sapphire'
+          : isActive
+            ? 'bg-selected text-ink'
+            : 'text-muted hover:bg-hover hover:text-ink'
+      } ${isDragging ? 'opacity-40' : ''}`}
+    >
+      {dropZone === 'before' && (
+        <span className="pointer-events-none absolute inset-x-1 -top-px h-0.5 rounded-full bg-sapphire" />
       )}
+      {dropZone === 'after' && (
+        <span className="pointer-events-none absolute inset-x-1 -bottom-px h-0.5 rounded-full bg-sapphire" />
+      )}
+      {hasChildren ? (
+        <button
+          type="button"
+          data-page-toggle
+          data-page-focusable
+          data-expanded={expanded}
+          aria-label={expanded ? t('sidebar.collapse') : t('sidebar.expand')}
+          onClick={() => toggleExpanded(page.id)}
+          className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-muted transition hover:bg-hover hover:text-ink"
+        >
+          <Icon name={expanded ? 'chev-down' : 'chev-right'} size={16} strokeWidth={2.4} />
+        </button>
+      ) : (
+        <span className="h-5 w-4 shrink-0" />
+      )}
+      {isRenaming ? (
+        <RenameInput
+          initial={page.title}
+          onCommit={(title) => onRenameCommit(page.id, title)}
+          onCancel={onRenameCancel}
+        />
+      ) : (
+        <button
+          type="button"
+          data-page-title
+          data-page-focusable
+          onPointerDown={(event) => onDragPointerDown(page.id, event)}
+          onClick={() => {
+            if (suppressClickRef.current) {
+              suppressClickRef.current = false
+              return
+            }
+            selectPage(page.id)
+          }}
+          onDoubleClick={() => onStartRename(page.id)}
+          className="flex h-full min-w-0 flex-1 touch-pan-y items-center gap-1.5 py-1 text-left text-sm font-semibold select-none"
+        >
+          {page.icon && (
+            <span data-page-icon className="shrink-0 text-sm leading-none">
+              {page.icon}
+            </span>
+          )}
+          <span className="truncate">{page.title || t('common.untitled')}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        data-page-action="add-child"
+        data-page-focusable
+        title={t('sidebar.addSubpage')}
+        onClick={() => void createPage(page.id)}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
+      >
+        <Icon name="plus" size={14} />
+      </button>
+      <button
+        type="button"
+        data-page-action="open-menu"
+        data-page-focusable
+        title={t('sidebar.pageOptions')}
+        onClick={openMenu}
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted opacity-0 transition hover:bg-hover hover:text-ink focus:opacity-100 group-hover:opacity-100 coarse:opacity-100"
+      >
+        <Icon name="more" size={14} />
+      </button>
     </div>
   )
 }
@@ -270,6 +282,9 @@ export function Sidebar({
 }) {
   const { t } = useTranslation()
   const pages = usePagesStore((state) => state.pages)
+  const activePageId = usePagesStore((state) => state.activePageId)
+  const selectionVersion = usePagesStore((state) => state.selectionVersion)
+  const expandedIds = usePagesStore((state) => state.expandedIds)
   const createPage = usePagesStore((state) => state.createPage)
   const deletePage = usePagesStore((state) => state.deletePage)
   const renamePage = usePagesStore((state) => state.renamePage)
@@ -284,17 +299,179 @@ export function Sidebar({
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const isMobile = useIsMobile()
   const asideRef = useRef<HTMLElement>(null)
+  const pageListRef = useRef<HTMLElement>(null)
+  const pageFocusRequestRef = useRef<PageFocusRequest | null>(null)
+  const [focusedPageId, setFocusedPageId] = useState<string | null>(null)
+  const [pageViewport, setPageViewport] = useState({
+    scrollTop: 0,
+    height: INITIAL_PAGE_VIEWPORT_HEIGHT
+  })
+
+  const syncPageViewport = useCallback((element: HTMLElement | null) => {
+    if (!element) return
+    setPageViewport((current) => {
+      const next = { scrollTop: element.scrollTop, height: element.clientHeight }
+      return current.scrollTop === next.scrollTop && current.height === next.height
+        ? current
+        : next
+    })
+  }, [])
+
   const {
     drag,
     handleDragPointerDown,
     suppressClickRef,
     isBusy: isDragBusy
   } = usePageDrag({
+    getScrollContainer: () => pageListRef.current,
     onLongPress: (pageId, target) => {
       setMenu({ pageId, source: target, anchor: rectAnchor(target) })
     }
   })
   const tree = useMemo(() => buildPageTree(pages), [pages])
+  const visibleRows = useMemo(
+    () => flattenVisiblePageTree(tree, expandedIds),
+    [tree, expandedIds]
+  )
+  const rowIndexById = useMemo(
+    () => new Map(visibleRows.map((row, index) => [row.node.page.id, index])),
+    [visibleRows]
+  )
+  const activePageIndex = activePageId ? rowIndexById.get(activePageId) : undefined
+  const pinnedPageIds = useMemo(
+    () =>
+      new Set(
+        [renamingId, menu?.pageId, iconFor?.pageId, drag?.pageId, drag?.overId, focusedPageId].filter(
+          (id): id is string => typeof id === 'string'
+        )
+      ),
+    [renamingId, menu?.pageId, iconFor?.pageId, drag?.pageId, drag?.overId, focusedPageId]
+  )
+  const firstVirtualIndex = Math.max(
+    0,
+    Math.floor(pageViewport.scrollTop / PAGE_ROW_HEIGHT) - PAGE_ROW_OVERSCAN
+  )
+  const endVirtualIndex = Math.min(
+    visibleRows.length,
+    Math.ceil((pageViewport.scrollTop + pageViewport.height) / PAGE_ROW_HEIGHT) +
+      PAGE_ROW_OVERSCAN
+  )
+  const virtualRows = useMemo(() => {
+    const indexes: number[] = []
+    const included = new Set<number>()
+    for (let index = firstVirtualIndex; index < endVirtualIndex; index += 1) {
+      indexes.push(index)
+      included.add(index)
+    }
+    for (const pageId of pinnedPageIds) {
+      const index = rowIndexById.get(pageId)
+      if (index === undefined || included.has(index)) continue
+      indexes.push(index)
+      included.add(index)
+    }
+    indexes.sort((left, right) => left - right)
+    return indexes.map((index) => ({ ...visibleRows[index], index }))
+  }, [endVirtualIndex, firstVirtualIndex, pinnedPageIds, rowIndexById, visibleRows])
+
+  useLayoutEffect(() => {
+    const element = pageListRef.current
+    if (!element) return
+    syncPageViewport(element)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => syncPageViewport(element))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [syncPageViewport])
+
+  useLayoutEffect(() => {
+    if (!activePageId) return
+    const index = rowIndexById.get(activePageId)
+    const element = pageListRef.current
+    if (index === undefined || !element) return
+
+    const top = index * PAGE_ROW_HEIGHT
+    const bottom = top + PAGE_ROW_HEIGHT
+    let scrollTop = element.scrollTop
+    if (top < element.scrollTop) scrollTop = top
+    else if (bottom > element.scrollTop + element.clientHeight) {
+      scrollTop = bottom - element.clientHeight
+    }
+    if (scrollTop === element.scrollTop) return
+    element.scrollTop = Math.max(0, scrollTop)
+    syncPageViewport(element)
+  }, [activePageId, activePageIndex, selectionVersion, syncPageViewport])
+
+  useLayoutEffect(() => {
+    const request = pageFocusRequestRef.current
+    const element = pageListRef.current
+    if (!request || !element) return
+    const row = Array.from(element.querySelectorAll<HTMLElement>('[data-page-id]')).find(
+      (candidate) => candidate.dataset.pageId === request.pageId
+    )
+    if (!row) return
+    pageFocusRequestRef.current = null
+    focusPageRowEdge(row, request.edge)
+  }, [virtualRows])
+
+  const handlePageListFocus = (event: ReactFocusEvent<HTMLElement>): void => {
+    const target = event.target
+    const row = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-page-id]') : null
+    setFocusedPageId(row?.dataset.pageId ?? null)
+  }
+
+  const handlePageListBlur = (): void => {
+    window.requestAnimationFrame(() => {
+      const element = pageListRef.current
+      const target = document.activeElement
+      const row = target instanceof HTMLElement ? target.closest<HTMLElement>('[data-page-id]') : null
+      setFocusedPageId(
+        element && target instanceof HTMLElement && element.contains(target)
+          ? row?.dataset.pageId ?? null
+          : null
+      )
+    })
+  }
+
+  const handlePageListKeyDown = (event: ReactKeyboardEvent<HTMLElement>): void => {
+    if (event.key !== 'Tab' || !(event.target instanceof HTMLElement)) return
+    const row = event.target.closest<HTMLElement>('[data-page-id]')
+    const index = Number(row?.dataset.pageIndex)
+    if (!row || !Number.isInteger(index)) return
+
+    const focusable = row.querySelectorAll<HTMLElement>('[data-page-focusable]')
+    const currentIndex = Array.from(focusable).indexOf(event.target)
+    const isRowEdge = event.shiftKey
+      ? currentIndex === 0
+      : currentIndex === focusable.length - 1
+    if (!isRowEdge) return
+
+    const nextIndex = index + (event.shiftKey ? -1 : 1)
+    const nextRow = visibleRows[nextIndex]
+    const element = pageListRef.current
+    if (!nextRow || !element) return
+
+    event.preventDefault()
+    const edge = event.shiftKey ? 'last' : 'first'
+    const mountedRow = Array.from(element.querySelectorAll<HTMLElement>('[data-page-id]')).find(
+      (candidate) => candidate.dataset.pageId === nextRow.node.page.id
+    )
+    if (mountedRow) {
+      pageFocusRequestRef.current = null
+      focusPageRowEdge(mountedRow, edge)
+      return
+    }
+
+    pageFocusRequestRef.current = { pageId: nextRow.node.page.id, edge }
+    const top = nextIndex * PAGE_ROW_HEIGHT
+    const bottom = top + PAGE_ROW_HEIGHT
+    let scrollTop = element.scrollTop
+    if (top < element.scrollTop) scrollTop = top
+    else if (bottom > element.scrollTop + element.clientHeight) {
+      scrollTop = bottom - element.clientHeight
+    }
+    element.scrollTop = Math.max(0, scrollTop)
+    syncPageViewport(element)
+  }
 
   /* En móvil el drawer cerrado sale del orden de tabulación y del árbol
      accesible; en escritorio el sidebar siempre está visible. */
@@ -376,29 +553,52 @@ export function Sidebar({
             <Icon name="plus" size={14} />
           </button>
         </div>
-        <nav className="min-h-0 flex-1 overflow-y-auto">
-          {tree.map((node) => (
-            <PageTreeItem
-              key={node.page.id}
-              node={node}
-              depth={0}
-              renamingId={renamingId}
-              draggingId={drag?.pageId ?? null}
-              drop={drag?.overId ? { id: drag.overId, zone: drag.zone } : null}
-              suppressClickRef={suppressClickRef}
-              onStartRename={(id) => setRenamingId(id)}
-              onRenameCommit={(id, title) => {
-                renamePage(id, title)
-                setRenamingId(null)
-              }}
-              onRenameCancel={() => setRenamingId(null)}
-              onOpenMenu={(pageId, source) => {
-                setMenu({ pageId, source, anchor: rectAnchor(source) })
-                setIconFor(null)
-              }}
-              onDragPointerDown={handleDragPointerDown}
-            />
-          ))}
+        <nav
+          ref={pageListRef}
+          data-page-nav
+          className="min-h-0 flex-1 overflow-y-auto"
+          onScroll={(event) => syncPageViewport(event.currentTarget)}
+          onFocusCapture={handlePageListFocus}
+          onBlurCapture={handlePageListBlur}
+          onKeyDown={handlePageListKeyDown}
+        >
+          <div
+            data-page-list
+            data-page-count={visibleRows.length}
+            data-page-rendered={virtualRows.length}
+            style={{ position: 'relative', height: visibleRows.length * PAGE_ROW_HEIGHT }}
+          >
+            {virtualRows.map(({ node, depth, index }) => (
+              <PageTreeItem
+                key={node.page.id}
+                node={node}
+                depth={depth}
+                index={index}
+                style={{
+                  position: 'absolute',
+                  top: index * PAGE_ROW_HEIGHT,
+                  left: 0,
+                  right: 0,
+                  height: PAGE_ROW_HEIGHT
+                }}
+                renamingId={renamingId}
+                draggingId={drag?.pageId ?? null}
+                drop={drag?.overId ? { id: drag.overId, zone: drag.zone } : null}
+                suppressClickRef={suppressClickRef}
+                onStartRename={(id) => setRenamingId(id)}
+                onRenameCommit={(id, title) => {
+                  renamePage(id, title)
+                  setRenamingId(null)
+                }}
+                onRenameCancel={() => setRenamingId(null)}
+                onOpenMenu={(pageId, source) => {
+                  setMenu({ pageId, source, anchor: rectAnchor(source) })
+                  setIconFor(null)
+                }}
+                onDragPointerDown={handleDragPointerDown}
+              />
+            ))}
+          </div>
         </nav>
       </div>
       {menu && menuPage && (

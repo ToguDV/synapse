@@ -4,6 +4,7 @@ import {
   buildPageTree,
   collectDescendantIds,
   flattenPages,
+  flattenVisiblePageTree,
   movePage,
   nextPageAfterDelete,
   pageAncestors
@@ -74,6 +75,36 @@ describe('flattenPages', () => {
     ]
 
     expect(flattenPages(pages).map((page) => page.id)).toEqual(['root', 'child', 'sibling'])
+  })
+})
+
+describe('flattenVisiblePageTree', () => {
+  it('incluye solo los descendientes de padres expandidos y conserva profundidad y orden', () => {
+    const pages = [
+      makePage({ id: 'root-a', position: 0 }),
+      makePage({ id: 'child-a', parentId: 'root-a', position: 0 }),
+      makePage({ id: 'grandchild', parentId: 'child-a', position: 0 }),
+      makePage({ id: 'child-b', parentId: 'root-a', position: 1 }),
+      makePage({ id: 'root-b', position: 1 })
+    ]
+    const tree = buildPageTree(pages)
+
+    expect(flattenVisiblePageTree(tree, []).map(({ node, depth }) => [node.page.id, depth])).toEqual([
+      ['root-a', 0],
+      ['root-b', 0]
+    ])
+    expect(
+      flattenVisiblePageTree(tree, ['root-a', 'child-a']).map(({ node, depth }) => [
+        node.page.id,
+        depth
+      ])
+    ).toEqual([
+      ['root-a', 0],
+      ['child-a', 1],
+      ['grandchild', 2],
+      ['child-b', 1],
+      ['root-b', 0]
+    ])
   })
 })
 
