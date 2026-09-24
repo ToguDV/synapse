@@ -4,13 +4,13 @@
 //
 // Uso (desde el host, con el dev server del renderer en 5174):
 //   node e2e/phase3.e2e.cjs
-const { chromium } = require('/home/togu/.npm/_npx/86170c4cd1c5da32/node_modules/playwright')
+const { chromium } = require('./playwright.cjs')
 const path = require('node:path')
 const fs = require('node:fs')
 
 const URL = 'http://localhost:5174/'
 const MOCK = path.join(__dirname, 'mock-api.js')
-const OUT = '/tmp/opencode'
+const OUT = path.join(require('node:os').tmpdir(), 'opencode')
 fs.mkdirSync(OUT, { recursive: true })
 
 const consoleErrors = []

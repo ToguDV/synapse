@@ -2,7 +2,7 @@
 // Run with the renderer server on port 5174:
 //   docker compose run -d --rm --name synapse-e2e dev npx vite --config tests/vite.e2e.config.ts
 //   node e2e/sidebar-virtualization.e2e.cjs
-const { chromium } = require('/home/togu/.npm/_npx/86170c4cd1c5da32/node_modules/playwright')
+const { chromium } = require('./playwright.cjs')
 const path = require('node:path')
 
 const URL = 'http://localhost:5174/'
