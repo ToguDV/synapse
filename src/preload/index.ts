@@ -25,7 +25,13 @@ const api: Api = {
     create: (input) => ipcRenderer.invoke('blocks:create', input),
     update: (id, patch) => ipcRenderer.invoke('blocks:update', { id, patch }),
     reorder: (pageId, orderedIds) => ipcRenderer.invoke('blocks:reorder', { pageId, orderedIds }),
-    remove: (id) => ipcRenderer.invoke('blocks:remove', id)
+    remove: (id) => ipcRenderer.invoke('blocks:remove', id),
+    sync: (pageId, input) =>
+      ipcRenderer.invoke('blocks:sync', {
+        pageId,
+        upserts: input.upserts,
+        removeIds: input.removeIds
+      })
   },
   search: {
     query: (term, limit) => ipcRenderer.invoke('search:query', { term, limit })

@@ -113,14 +113,18 @@ async function stage1(page) {
   // para poder verificar después el remove al fusionar.
   await page.waitForTimeout(700)
   const afterSplit = await state(page)
-  const splitCreate = afterSplit.calls.find(
-    (call) => call[0] === 'create' && call[1].content === '{"text":"mundo"}'
+  const splitSync = afterSplit.calls.find(
+    (call) =>
+      call[0] === 'sync' && call[2].upserts.some((upsert) => upsert.content === '{"text":"mundo"}')
   )
   check(
     steps,
-    'autosave del split: create "mundo" en position 1',
-    splitCreate && splitCreate[1].position === 1 && splitCreate[1].id === blocks[1]?.id,
-    splitCreate && splitCreate[1]
+    'autosave del split: sync crea "mundo" en position 1',
+    splitSync &&
+      splitSync[2].upserts.some(
+        (upsert) => upsert.position === 1 && upsert.id === blocks[1]?.id && upsert.content === '{"text":"mundo"}'
+      ),
+    splitSync && splitSync[2]
   )
 
   await page.locator('div[contenteditable]').nth(1).click()
@@ -143,15 +147,17 @@ async function stage1(page) {
 
   await page.waitForTimeout(700)
   const persisted = await state(page)
-  const kinds = persisted.calls.map((call) => call[0])
-  const removeCall = persisted.calls.find((call) => call[0] === 'remove')
-  check(steps, 'autosave: remove del bloque fusionado', !!removeCall, kinds)
-  const lastUpdate = [...persisted.calls].reverse().find((call) => call[0] === 'update')
+  const syncCalls = persisted.calls.filter((call) => call[0] === 'sync')
+  const mergeSync = syncCalls.find((call) => call[2].removeIds.length > 0)
+  check(steps, 'autosave: sync elimina el bloque fusionado', !!mergeSync, syncCalls.map((call) => call[2]))
+  const mergeUpsert = mergeSync
+    ? mergeSync[2].upserts.find((upsert) => JSON.parse(upsert.content).text === 'hola mundo')
+    : null
   check(
     steps,
-    'autosave: update del primer bloque a "hola mundo"',
-    lastUpdate && JSON.parse(lastUpdate[2].content).text === 'hola mundo',
-    lastUpdate
+    'autosave: sync escribe el primer bloque a "hola mundo"',
+    !!mergeUpsert,
+    mergeSync && mergeSync[2]
   )
   const text = persisted.blocks[0] ? JSON.parse(persisted.blocks[0].content).text : null
   check(steps, 'BD mock: un bloque "hola mundo"', persisted.blocks.length === 1 && text === 'hola mundo', persisted.blocks)
@@ -170,9 +176,12 @@ async function stage2a(page) {
 
   await page.waitForTimeout(700)
   const persisted = await state(page)
-  const updateCall = persisted.calls.find((call) => call[0] === 'update')
-  const savedText = updateCall ? JSON.parse(updateCall[2].content).text : null
-  check(steps, 'autosave guarda el texto acentuado', savedText === 'canción ñandú', updateCall && updateCall[2])
+  const syncCall = persisted.calls.find(
+    (call) =>
+      call[0] === 'sync' &&
+      call[2].upserts.some((upsert) => JSON.parse(upsert.content).text === 'canción ñandú')
+  )
+  check(steps, 'autosave guarda el texto acentuado', !!syncCall, syncCall && syncCall[2])
   await shot(page, 'e2e-04-acentos.png')
 
   return { steps, calls: persisted.calls }
@@ -193,12 +202,10 @@ async function stage2b(page) {
   check(steps, 'Tab indenta el segundo bloque (marginLeft 24px)', blocks[1]?.marginLeft === '24px', blocks)
   await page.waitForTimeout(700)
   let persisted = await state(page)
-  // Si el split aún no se había persistido, el bloque se crea ya con indent 1;
-  // si ya existía, se actualiza. Ambas rutas son válidas.
+  // El sync del autosave incluye el upsert del bloque con el indent aplicado.
   const persistedIndent1 = persisted.calls.some(
     (call) =>
-      (call[0] === 'update' && call[1] === secondId && call[2].indent === 1) ||
-      (call[0] === 'create' && call[1].id === secondId && call[1].indent === 1)
+      call[0] === 'sync' && call[2].upserts.some((upsert) => upsert.id === secondId && upsert.indent === 1)
   )
   check(steps, 'autosave registra indent 1', persistedIndent1, persisted.calls)
   await shot(page, 'e2e-05-indent.png')
@@ -212,7 +219,10 @@ async function stage2b(page) {
   check(
     steps,
     'autosave registra indent 0',
-    persisted.calls.some((call) => call[0] === 'update' && call[1] === secondId && call[2].indent === 0),
+    persisted.calls.some(
+      (call) =>
+        call[0] === 'sync' && call[2].upserts.some((upsert) => upsert.id === secondId && upsert.indent === 0)
+    ),
     persisted.calls
   )
 
@@ -225,7 +235,10 @@ async function stage2b(page) {
   check(
     steps,
     'autosave tras undo registra indent 1',
-    persisted.calls.some((call) => call[0] === 'update' && call[1] === secondId && call[2].indent === 1),
+    persisted.calls.some(
+      (call) =>
+        call[0] === 'sync' && call[2].upserts.some((upsert) => upsert.id === secondId && upsert.indent === 1)
+    ),
     persisted.calls
   )
 
@@ -256,7 +269,7 @@ async function stage3(page) {
     persisted.blocks
   )
   const kinds = persisted.calls.map((call) => call[0])
-  check(steps, 'secuencia de autosave create+update coherente', kinds.includes('create') && kinds.includes('update'), persisted.calls)
+  check(steps, 'secuencia de autosave sync coherente', kinds.includes('sync') && persisted.calls.some((call) => call[0] === 'sync' && call[2].upserts.length === 2), persisted.calls)
   await shot(page, 'e2e-07-autosave.png')
 
   await page.reload()

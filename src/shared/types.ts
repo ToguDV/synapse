@@ -56,6 +56,19 @@ export interface BlockUpdatePatch {
   indent?: number
 }
 
+export interface BlockUpsertInput {
+  id: string
+  type: BlockType
+  content: string
+  position: number
+  indent: number
+}
+
+export interface BlockSyncInput {
+  upserts: BlockUpsertInput[]
+  removeIds: string[]
+}
+
 export interface SearchPageResult {
   kind: 'page'
   pageId: string
@@ -97,6 +110,7 @@ export interface Api {
     update: (id: string, patch: BlockUpdatePatch) => Promise<Block>
     reorder: (pageId: string, orderedIds: string[]) => Promise<Block[]>
     remove: (id: string) => Promise<void>
+    sync: (pageId: string, input: BlockSyncInput) => Promise<Block[]>
   }
   search: {
     query: (term: string, limit?: number) => Promise<SearchResult[]>

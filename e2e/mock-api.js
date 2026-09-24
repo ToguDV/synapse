@@ -254,6 +254,43 @@
         const i = blocks.findIndex((x) => x.id === id)
         if (i >= 0) blocks.splice(i, 1)
         persist()
+      },
+      sync: async (pageId, input) => {
+        calls.push(['sync', pageId, input])
+        for (const id of input.removeIds) {
+          const i = blocks.findIndex((x) => x.id === id)
+          if (i >= 0) blocks.splice(i, 1)
+        }
+        const stamp = Date.now()
+        for (const upsert of input.upserts) {
+          const existing = blocks.find((x) => x.id === upsert.id)
+          if (!existing) {
+            blocks.push({
+              id: upsert.id,
+              pageId,
+              type: upsert.type,
+              content: upsert.content,
+              position: upsert.position,
+              indent: upsert.indent,
+              createdAt: stamp,
+              updatedAt: stamp
+            })
+            continue
+          }
+          if (existing.pageId !== pageId) {
+            throw new Error(`Block ${upsert.id} belongs to another page`)
+          }
+          existing.type = upsert.type
+          existing.content = upsert.content
+          existing.indent = upsert.indent
+          existing.position = upsert.position
+          existing.updatedAt = stamp
+        }
+        persist()
+        return blocks
+          .filter((b) => b.pageId === pageId)
+          .sort((a, b) => a.position - b.position || a.createdAt - b.createdAt)
+          .map((b) => ({ ...b }))
       }
     },
     search: {

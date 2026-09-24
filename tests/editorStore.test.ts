@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEditorStore } from '../src/renderer/src/editor/editorStore'
-import type { Block, BlockCreateInput, BlockUpdatePatch } from '../src/shared/types'
+import type {
+  Block,
+  BlockCreateInput,
+  BlockSyncInput,
+  BlockUpdatePatch
+} from '../src/shared/types'
 
 function makeBlock(partial: Partial<Block> & { id: string }): Block {
   return {
@@ -53,11 +58,48 @@ function installApi(initial: Block[] = []) {
     }),
     remove: vi.fn(async (id: string) => {
       db.delete(id)
+    }),
+    sync: vi.fn(async (pageId: string, input: BlockSyncInput) => {
+      for (const id of input.removeIds) db.delete(id)
+      for (const upsert of input.upserts) {
+        const existing = db.get(upsert.id)
+        if (!existing) {
+          db.set(
+            upsert.id,
+            makeBlock({
+              id: upsert.id,
+              pageId,
+              type: upsert.type,
+              content: upsert.content,
+              position: upsert.position,
+              indent: upsert.indent
+            })
+          )
+          continue
+        }
+        if (existing.pageId !== pageId) {
+          throw new Error(`Block ${upsert.id} belongs to another page`)
+        }
+        db.set(upsert.id, {
+          ...existing,
+          type: upsert.type,
+          content: upsert.content,
+          indent: upsert.indent,
+          position: upsert.position,
+          updatedAt: 2
+        })
+      }
+      return [...db.values()]
+        .filter((block) => block.pageId === pageId)
+        .sort((a, b) => a.position - b.position)
     })
   }
   vi.stubGlobal('window', { api: { blocks } })
   return { blocks, db }
 }
+
+const syncCall = (blocks: ReturnType<typeof installApi>['blocks']) =>
+  blocks.sync as ReturnType<typeof vi.fn>
 
 const state = () => useEditorStore.getState()
 const load = () => useEditorStore.getState().loadPage('p1')
@@ -248,14 +290,15 @@ describe('editorStore · edición', () => {
 
     state().setText('a', 'Hola')
     expect(state().blocks[0].text).toBe('Hola')
-    expect(blocks.update).not.toHaveBeenCalled()
+    expect(blocks.sync).not.toHaveBeenCalled()
 
     await advance()
 
-    expect(blocks.update).toHaveBeenCalledWith('a', {
-      type: 'paragraph',
-      content: '{"text":"Hola"}',
-      indent: 0
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"Hola"}', position: 0, indent: 0 }
+      ],
+      removeIds: []
     })
   })
 
@@ -271,13 +314,13 @@ describe('editorStore · edición', () => {
 
     await advance()
 
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"hola "}' })
-    )
-    expect(blocks.create).toHaveBeenCalledWith(
-      expect.objectContaining({ id: created.id, content: '{"text":"mundo"}', position: 1 })
-    )
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"hola "}', position: 0, indent: 0 },
+        { id: created.id, type: 'paragraph', content: '{"text":"mundo"}', position: 1, indent: 0 }
+      ],
+      removeIds: []
+    })
   })
 
   it('mergeBackward fusiona y elimina el bloque en la base', async () => {
@@ -294,7 +337,12 @@ describe('editorStore · edición', () => {
 
     await advance()
 
-    expect(blocks.remove).toHaveBeenCalledWith('b')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"hola mundo"}', position: 0, indent: 0 }
+      ],
+      removeIds: ['b']
+    })
   })
 
   it('mergeForward fusiona el siguiente en el actual', async () => {
@@ -311,7 +359,12 @@ describe('editorStore · edición', () => {
 
     await advance()
 
-    expect(blocks.remove).toHaveBeenCalledWith('b')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"hola mundo"}', position: 0, indent: 0 }
+      ],
+      removeIds: ['b']
+    })
   })
 
   it('Backspace sobre bloque vacío no párrafo lo convierte en párrafo', async () => {
@@ -321,7 +374,7 @@ describe('editorStore · edición', () => {
     state().mergeBackward('a')
 
     expect(state().blocks[0].type).toBe('paragraph')
-    expect(blocks.remove).not.toHaveBeenCalled()
+    expect(blocks.sync).not.toHaveBeenCalled()
   })
 
   it('indentBlock y outdentBlock respetan las reglas', async () => {
@@ -351,7 +404,13 @@ describe('editorStore · edición', () => {
     state().indentBlock('b')
     await advance()
 
-    expect(blocks.update).toHaveBeenCalledWith('b', expect.objectContaining({ indent: 1 }))
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"uno"}', position: 0, indent: 0 },
+        { id: 'b', type: 'paragraph', content: '{"text":"dos"}', position: 1, indent: 1 }
+      ],
+      removeIds: []
+    })
   })
 
   it('focusSibling mueve el caret entre bloques', async () => {
@@ -454,18 +513,23 @@ describe('editorStore · undo/redo', () => {
 
     state().mergeBackward('b')
     await advance()
-    expect(blocks.remove).toHaveBeenCalledWith('b')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"hola mundo"}', position: 0, indent: 0 }
+      ],
+      removeIds: ['b']
+    })
 
     state().undo()
     await advance()
 
-    expect(blocks.create).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'b', content: '{"text":"mundo"}', position: 1 })
-    )
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"hola "}' })
-    )
+    expect(blocks.sync).toHaveBeenLastCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"hola "}', position: 0, indent: 0 },
+        { id: 'b', type: 'paragraph', content: '{"text":"mundo"}', position: 1, indent: 0 }
+      ],
+      removeIds: []
+    })
   })
 })
 
@@ -479,7 +543,10 @@ describe('editorStore · acciones restantes', () => {
 
     await advance()
 
-    expect(blocks.update).toHaveBeenCalledWith('a', expect.objectContaining({ type: 'heading' }))
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [{ id: 'a', type: 'heading', content: '{"text":"T"}', position: 0, indent: 0 }],
+      removeIds: []
+    })
   })
 
   it('removeBlock elimina, enfoca el anterior y lo borra en la base', async () => {
@@ -497,7 +564,13 @@ describe('editorStore · acciones restantes', () => {
 
     await advance()
 
-    expect(blocks.remove).toHaveBeenCalledWith('b')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"uno"}', position: 0, indent: 0 },
+        { id: 'c', type: 'paragraph', content: '{"text":"tres"}', position: 1, indent: 0 }
+      ],
+      removeIds: ['b']
+    })
   })
 
   it('carga tipo e indent además del texto', async () => {
@@ -522,7 +595,15 @@ describe('editorStore · acciones restantes', () => {
     const insertedId = state().blocks[1].id
     await advance()
 
-    expect(blocks.reorder).toHaveBeenCalledWith('p1', ['a', insertedId, 'b', 'c'])
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        { id: 'a', type: 'paragraph', content: '{"text":"u"}', position: 0, indent: 0 },
+        { id: insertedId, type: 'paragraph', content: '{"text":"no"}', position: 1, indent: 0 },
+        { id: 'b', type: 'paragraph', content: '{"text":"dos"}', position: 2, indent: 0 },
+        { id: 'c', type: 'paragraph', content: '{"text":"tres"}', position: 3, indent: 0 }
+      ],
+      removeIds: []
+    })
   })
 })
 
@@ -541,9 +622,7 @@ describe('editorStore · setText sin cambios reales', () => {
 
     await advance(800)
 
-    expect(blocks.update).not.toHaveBeenCalled()
-    expect(blocks.create).not.toHaveBeenCalled()
-    expect(blocks.remove).not.toHaveBeenCalled()
+    expect(blocks.sync).not.toHaveBeenCalled()
   })
 
   it('id inexistente: no añade historial, no toca bloques ni programa autosave', async () => {
@@ -560,9 +639,7 @@ describe('editorStore · setText sin cambios reales', () => {
 
     await advance(800)
 
-    expect(blocks.update).not.toHaveBeenCalled()
-    expect(blocks.create).not.toHaveBeenCalled()
-    expect(blocks.remove).not.toHaveBeenCalled()
+    expect(blocks.sync).not.toHaveBeenCalled()
   })
 
   it('un cambio real añade exactamente una entrada y coalesce el tecleo seguido', async () => {
@@ -580,10 +657,14 @@ describe('editorStore · setText sin cambios reales', () => {
 
     await advance(800)
 
-    expect(blocks.update).toHaveBeenCalledTimes(1)
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"Hola!!!"}' })
+    expect(blocks.sync).toHaveBeenCalledTimes(1)
+    expect(blocks.sync).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        upserts: [
+          expect.objectContaining({ id: 'a', content: '{"text":"Hola!!!"}' })
+        ]
+      })
     )
 
     await advance(700)
@@ -592,10 +673,14 @@ describe('editorStore · setText sin cambios reales', () => {
 
     await advance(800)
 
-    expect(blocks.update).toHaveBeenCalledTimes(2)
-    expect(blocks.update).toHaveBeenLastCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"Hola!!!!"}' })
+    expect(blocks.sync).toHaveBeenCalledTimes(2)
+    expect(blocks.sync).toHaveBeenLastCalledWith(
+      'p1',
+      expect.objectContaining({
+        upserts: [
+          expect.objectContaining({ id: 'a', content: '{"text":"Hola!!!!"}' })
+        ]
+      })
     )
   })
 })
@@ -612,10 +697,10 @@ describe('editorStore · markdown y status', () => {
 
     await advance()
 
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ type: 'heading', content: '{"text":""}' })
-    )
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [{ id: 'a', type: 'heading', content: '{"text":""}', position: 0, indent: 0 }],
+      removeIds: []
+    })
   })
 
   it('applyInput convierte listas, tareas, citas y código', async () => {
@@ -681,19 +766,27 @@ describe('editorStore · markdown y status', () => {
     expect(state().blocks[0].status).toBe('done')
 
     await advance()
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"tarea","status":"done"}' })
-    )
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        {
+          id: 'a',
+          type: 'todo',
+          content: '{"text":"tarea","status":"done"}',
+          position: 0,
+          indent: 0
+        }
+      ],
+      removeIds: []
+    })
 
     state().undo()
     expect(state().blocks[0].status).toBe('todo')
 
     await advance()
-    expect(blocks.update).toHaveBeenLastCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"tarea"}' })
-    )
+    expect(blocks.sync).toHaveBeenLastCalledWith('p1', {
+      upserts: [{ id: 'a', type: 'todo', content: '{"text":"tarea"}', position: 0, indent: 0 }],
+      removeIds: []
+    })
   })
 
   it('toggleDone trata cualquier estado distinto de done como pendiente', async () => {
@@ -722,10 +815,18 @@ describe('editorStore · markdown y status', () => {
     expect(state().past.length).toBe(history)
 
     await advance()
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ content: '{"text":"t","status":"backlog"}' })
-    )
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [
+        {
+          id: 'a',
+          type: 'todo',
+          content: '{"text":"t","status":"backlog"}',
+          position: 0,
+          indent: 0
+        }
+      ],
+      removeIds: []
+    })
   })
 
   it('carga el status desde el content JSON y traduce el checked antiguo', async () => {
@@ -829,8 +930,13 @@ describe('editorStore · duplicar, borrar y mover', () => {
 
     await advance()
 
-    expect(blocks.create).toHaveBeenCalledWith(
-      expect.objectContaining({ content: '{"text":"uno"}', position: 1 })
+    expect(blocks.sync).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        upserts: expect.arrayContaining([
+          expect.objectContaining({ id: state().blocks[1].id, content: '{"text":"uno"}', position: 1 })
+        ])
+      })
     )
   })
 
@@ -852,8 +958,10 @@ describe('editorStore · duplicar, borrar y mover', () => {
 
     await advance()
 
-    expect(blocks.remove).toHaveBeenCalledWith('b')
-    expect(blocks.remove).toHaveBeenCalledWith('c')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [{ id: 'a', type: 'paragraph', content: '{"text":"uno"}', position: 0, indent: 0 }],
+      removeIds: ['b', 'c']
+    })
   })
 
   it('deleteBlocks del único bloque deja un párrafo vacío nuevo', async () => {
@@ -885,8 +993,14 @@ describe('editorStore · duplicar, borrar y mover', () => {
 
     await advance()
 
-    expect(blocks.reorder).toHaveBeenLastCalledWith('p1', ['c', 'b', 'a'])
-    expect(blocks.update).toHaveBeenCalledWith('b', expect.objectContaining({ indent: 1 }))
+    expect(blocks.sync).toHaveBeenLastCalledWith('p1', {
+      upserts: [
+        { id: 'c', type: 'paragraph', content: '{"text":"tres"}', position: 0, indent: 0 },
+        { id: 'b', type: 'paragraph', content: '{"text":"dos"}', position: 1, indent: 1 },
+        { id: 'a', type: 'paragraph', content: '{"text":"uno"}', position: 2, indent: 0 }
+      ],
+      removeIds: []
+    })
   })
 })
 
@@ -973,7 +1087,10 @@ describe('editorStore · regresiones con divider', () => {
     expect(state().focusRequest).toMatchObject({ blockId: 'b', caret: 0 })
 
     await advance()
-    expect(blocks.remove).toHaveBeenCalledWith('a')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [{ id: 'b', type: 'paragraph', content: '{"text":"texto"}', position: 0, indent: 0 }],
+      removeIds: ['a']
+    })
   })
 
   it('mergeForward elimina el divider siguiente y mantiene el foco', async () => {
@@ -990,7 +1107,10 @@ describe('editorStore · regresiones con divider', () => {
     expect(state().focusRequest).toMatchObject({ blockId: 'a', caret: 3 })
 
     await advance()
-    expect(blocks.remove).toHaveBeenCalledWith('d')
+    expect(blocks.sync).toHaveBeenCalledWith('p1', {
+      upserts: [{ id: 'a', type: 'paragraph', content: '{"text":"abc"}', position: 0, indent: 0 }],
+      removeIds: ['d']
+    })
   })
 
   it('focusSibling salta los divisores', async () => {
@@ -1017,9 +1137,13 @@ describe('editorStore · regresiones con divider', () => {
     expect(state().blocks[0]).toMatchObject({ type: 'divider', text: '' })
 
     await advance()
-    expect(blocks.update).toHaveBeenCalledWith(
-      'a',
-      expect.objectContaining({ type: 'divider', content: '{"text":""}' })
+    expect(blocks.sync).toHaveBeenCalledWith(
+      'p1',
+      expect.objectContaining({
+        upserts: expect.arrayContaining([
+          expect.objectContaining({ id: 'a', type: 'divider', content: '{"text":""}' })
+        ])
+      })
     )
   })
 

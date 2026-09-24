@@ -104,7 +104,33 @@ function installApi(initial: Page[] = []) {
         throw new Error('no debería llamarse')
       }),
       reorder: vi.fn(async () => [] as Block[]),
-      remove: vi.fn(async () => undefined)
+      remove: vi.fn(async () => undefined),
+      sync: vi.fn(async (pageId: string, input: {
+        upserts: Array<{
+          id: string
+          type: Block['type']
+          content: string
+          position: number
+          indent: number
+        }>
+        removeIds: string[]
+      }) => {
+        const rows = new Map<string, Block>()
+        for (const upsert of input.upserts) {
+          rows.set(
+            upsert.id,
+            makeBlock({
+              id: upsert.id,
+              pageId,
+              type: upsert.type,
+              content: upsert.content,
+              position: upsert.position,
+              indent: upsert.indent
+            })
+          )
+        }
+        return [...rows.values()].sort((a, b) => a.position - b.position)
+      })
     }
   }
   vi.stubGlobal('window', { api })
@@ -281,7 +307,7 @@ describe('pagesStore', () => {
     await usePagesStore.getState().initialize()
     await useEditorStore.getState().loadPage('a')
     useEditorStore.getState().setText('block-1', 'hola')
-    api.blocks.update.mockRejectedValueOnce(new Error('db caída'))
+    api.blocks.sync.mockRejectedValueOnce(new Error('db caída'))
 
     await expect(usePagesStore.getState().deletePage('a')).resolves.toBeUndefined()
 
@@ -291,16 +317,18 @@ describe('pagesStore', () => {
     expect(useEditorStore.getState().pageId).toBe('a')
     expect(useEditorStore.getState().blocks.map((block) => block.text)).toEqual(['hola'])
 
-    api.blocks.update.mockResolvedValueOnce({
-      id: 'block-1',
-      pageId: 'a',
-      type: 'paragraph' as const,
-      content: '{"text":"hola"}',
-      position: 0,
-      indent: 0,
-      createdAt: 1,
-      updatedAt: 1
-    })
+    api.blocks.sync.mockResolvedValueOnce([
+      {
+        id: 'block-1',
+        pageId: 'a',
+        type: 'paragraph' as const,
+        content: '{"text":"hola"}',
+        position: 0,
+        indent: 0,
+        createdAt: 1,
+        updatedAt: 1
+      }
+    ])
     await useEditorStore.getState().loadPage('a')
     expect(useEditorStore.getState().blocks).toHaveLength(1)
   })

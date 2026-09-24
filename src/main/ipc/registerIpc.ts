@@ -5,6 +5,7 @@ import {
   type BlockCreateInput,
   type BlockType,
   type BlockUpdatePatch,
+  type BlockUpsertInput,
   type PageCreateInput
 } from '../../shared/types'
 import { createPagesRepo } from '../db/repositories/pages'
@@ -73,6 +74,32 @@ function parseBlockPatch(value: unknown): BlockUpdatePatch {
   return parsed
 }
 
+function parseBlockUpsert(value: unknown): BlockUpsertInput {
+  if (typeof value !== 'object' || value === null) throw new Error('Invalid block upsert')
+  const input = value as Record<string, unknown>
+  return {
+    id: requireId(input.id),
+    type: requireBlockType(input.type),
+    content: requireString(input.content, 'content'),
+    position: requireNumber(input.position, 'position'),
+    indent: requireNumber(input.indent, 'indent')
+  }
+}
+
+function parseBlockSyncInput(
+  value: unknown
+): { pageId: string; upserts: BlockUpsertInput[]; removeIds: string[] } {
+  if (typeof value !== 'object' || value === null) throw new Error('Invalid block sync input')
+  const input = value as Record<string, unknown>
+  if (!Array.isArray(input.upserts)) throw new Error('upserts must be an array')
+  if (!Array.isArray(input.removeIds)) throw new Error('removeIds must be an array')
+  return {
+    pageId: requireId(input.pageId, 'pageId'),
+    upserts: input.upserts.map(parseBlockUpsert),
+    removeIds: input.removeIds.map((id) => requireId(id, 'removeIds[]'))
+  }
+}
+
 export function registerIpc(db: Database.Database): void {
   const pages = createPagesRepo(db)
   const blocks = createBlocksRepo(db)
@@ -114,6 +141,10 @@ export function registerIpc(db: Database.Database): void {
     )
   })
   ipcMain.handle('blocks:remove', (_event, id: unknown) => blocks.remove(requireId(id)))
+  ipcMain.handle('blocks:sync', (_event, payload: unknown) => {
+    const input = parseBlockSyncInput(payload)
+    return blocks.sync(input.pageId, { upserts: input.upserts, removeIds: input.removeIds })
+  })
 
   ipcMain.handle('search:query', (_event, payload: unknown) => {
     const { term, limit } = (payload ?? {}) as Record<string, unknown>

@@ -72,60 +72,41 @@ export function createPersistence(hooks: PersistenceHooks): Persistence {
     const blocks = hooks.currentBlocks()
     if (!pageId || pageId !== persistedPageId) return
     const ids = new Set(blocks.map((block) => block.id))
-    for (const id of [...persisted.keys()]) {
-      if (ids.has(id)) continue
-      await window.api.blocks.remove(id)
-      persisted.delete(id)
-    }
-    for (let index = 0; index < blocks.length; index++) {
-      const block = blocks[index]
+    const removeIds = [...persisted.keys()].filter((id) => !ids.has(id))
+    let dirty = removeIds.length > 0
+    const upserts = blocks.map((block, index) => {
       const content = serializeContent(block.text, block.status ?? 'todo')
       const stored = persisted.get(block.id)
-      if (!stored) {
-        await window.api.blocks.create({
-          id: block.id,
-          pageId,
-          type: block.type,
-          content,
-          position: index,
-          indent: block.indent
-        })
-        persisted.set(block.id, {
-          content,
-          type: block.type,
-          indent: block.indent,
-          position: index
-        })
-        continue
-      }
       if (
+        !stored ||
         stored.content !== content ||
         stored.type !== block.type ||
-        stored.indent !== block.indent
+        stored.indent !== block.indent ||
+        stored.position !== index
       ) {
-        await window.api.blocks.update(block.id, {
-          type: block.type,
-          content,
-          indent: block.indent
-        })
-        stored.content = content
-        stored.type = block.type
-        stored.indent = block.indent
+        dirty = true
       }
-    }
-    if (
-      blocks.length > 0 &&
-      blocks.some((block, index) => persisted.get(block.id)?.position !== index)
-    ) {
-      await window.api.blocks.reorder(
-        pageId,
-        blocks.map((block) => block.id)
-      )
-      blocks.forEach((block, index) => {
-        const stored = persisted.get(block.id)
-        if (stored) stored.position = index
-      })
-    }
+      return {
+        id: block.id,
+        type: block.type,
+        content,
+        position: index,
+        indent: block.indent
+      }
+    })
+    if (!dirty) return
+    const rows = await window.api.blocks.sync(pageId, { upserts, removeIds })
+    persisted = new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          content: row.content,
+          type: row.type,
+          indent: row.indent,
+          position: row.position
+        }
+      ])
+    )
   }
 
   const abortCancelledLoad = (pageId: string): boolean => {

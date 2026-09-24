@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import type Database from 'better-sqlite3'
-import type { Block, BlockCreateInput, BlockUpdatePatch } from '../../../shared/types'
+import type {
+  Block,
+  BlockCreateInput,
+  BlockSyncInput,
+  BlockUpdatePatch
+} from '../../../shared/types'
 
 // Cubierto por tests/persistence.test.ts (better-sqlite3 v13 usa prebuilds N-API,
 // por lo que carga igual bajo Node/vitest y bajo Electron).
@@ -41,6 +46,10 @@ export function createBlocksRepo(db: Database.Database) {
   const remove = db.prepare('DELETE FROM blocks WHERE id = ?')
   const updatePosition = db.prepare(
     'UPDATE blocks SET position = ?, updated_at = ? WHERE id = ? AND page_id = ?'
+  )
+  const updateFull = db.prepare(
+    `UPDATE blocks SET type = ?, content = ?, indent = ?, position = ?, updated_at = ?
+     WHERE id = ? AND page_id = ?`
   )
 
   const now = (): number => Date.now()
@@ -115,7 +124,44 @@ export function createBlocksRepo(db: Database.Database) {
     remove.run(id)
   }
 
-  return { list, get, create, update, reorder, remove: removeBlock }
+  const sync = (pageId: string, input: BlockSyncInput): Block[] => {
+    const run = db.transaction(() => {
+      for (const id of input.removeIds) remove.run(id)
+      const stamp = now()
+      for (const upsert of input.upserts) {
+        const existing = selectById.get(upsert.id) as BlockRow | undefined
+        if (!existing) {
+          insert.run({
+            id: upsert.id,
+            pageId,
+            type: upsert.type,
+            content: upsert.content,
+            position: upsert.position,
+            indent: upsert.indent,
+            createdAt: stamp,
+            updatedAt: stamp
+          })
+          continue
+        }
+        if (existing.page_id !== pageId) {
+          throw new Error(`Block ${upsert.id} belongs to another page`)
+        }
+        updateFull.run(
+          upsert.type,
+          upsert.content,
+          upsert.indent,
+          upsert.position,
+          stamp,
+          upsert.id,
+          pageId
+        )
+      }
+    })
+    run()
+    return list(pageId)
+  }
+
+  return { list, get, create, update, reorder, remove: removeBlock, sync }
 }
 
 export type BlocksRepo = ReturnType<typeof createBlocksRepo>
