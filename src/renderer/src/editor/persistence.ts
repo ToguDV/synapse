@@ -1,4 +1,5 @@
 import type { Block, BlockType } from '../../../shared/types'
+import { createDebouncer } from '../../../shared/debounce'
 import { parseBlockContent, serializeContent } from './content'
 import { getBlockDefinition } from './registry'
 import type { EditorBlock } from './types'
@@ -45,23 +46,22 @@ function toEditorBlock(row: Block): EditorBlock {
 export function createPersistence(hooks: PersistenceHooks): Persistence {
   let persisted = new Map<string, PersistedBlock>()
   let persistedPageId: string | null = null
-  let persistTimer: ReturnType<typeof setTimeout> | undefined
   let flushQueue: Promise<void> = Promise.resolve()
   let loadQueue: Promise<void> = Promise.resolve()
   const cancelledLoads = new Set<string>()
   let pendingBlockFocus: { pageId: string; blockId: string } | null = null
+  const autosave = createDebouncer(AUTOSAVE_DELAY_MS)
 
   const isCurrent = (pageId: string): boolean => hooks.currentPage() === pageId
 
   const schedulePersist = (): void => {
-    clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
+    autosave.schedule(() => {
       void flush().catch(() => undefined)
-    }, AUTOSAVE_DELAY_MS)
+    })
   }
 
   const clear = (): void => {
-    clearTimeout(persistTimer)
+    autosave.cancel()
     persisted = new Map()
     persistedPageId = null
     pendingBlockFocus = null
@@ -159,7 +159,7 @@ export function createPersistence(hooks: PersistenceHooks): Persistence {
   }
 
   const flush = (): Promise<void> => {
-    clearTimeout(persistTimer)
+    autosave.cancel()
     flushQueue = flushQueue.then(runFlush, runFlush)
     return flushQueue
   }

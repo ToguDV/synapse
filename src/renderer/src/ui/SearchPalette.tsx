@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { SearchResult } from '../../../shared/types'
+import { createDebouncer } from '../../../shared/debounce'
 import { getBlockDefinition } from '../editor/registry'
 import { useTranslation } from '../i18n'
 import { Icon } from './Icon'
@@ -27,6 +28,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
   const requestRef = useRef(0)
   const listRef = useRef<HTMLUListElement>(null)
   const term = query.trim()
+  const debounce = useMemo(() => createDebouncer(DEBOUNCE_MS), [])
 
   useEffect(() => {
     if (term === '') {
@@ -38,7 +40,7 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
     }
     setSearching(true)
     const nonce = ++requestRef.current
-    const timer = setTimeout(() => {
+    debounce.schedule(() => {
       window.api.search
         .query(term)
         .then((found) => {
@@ -52,9 +54,9 @@ export function SearchPalette({ onNavigate, onClose }: SearchPaletteProps) {
           setResults([])
           setSearching(false)
         })
-    }, DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [term])
+    })
+    return debounce.cancel
+  }, [term, debounce])
 
   useEffect(() => {
     listRef.current

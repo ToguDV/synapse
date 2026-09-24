@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Page } from '../../../shared/types'
+import { createDebouncer, type Debouncer } from '../../../shared/debounce'
 import { useEditorStore } from '../editor/editorStore'
 import { t } from '../i18n'
 import {
@@ -27,13 +28,11 @@ interface PagesState {
 const AUTOSAVE_DELAY_MS = 500
 
 let initPromise: Promise<void> | null = null
-const renameTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const renameDebouncers = new Map<string, Debouncer>()
 
 function clearRenameTimer(id: string): void {
-  const timer = renameTimers.get(id)
-  if (timer === undefined) return
-  clearTimeout(timer)
-  renameTimers.delete(id)
+  renameDebouncers.get(id)?.cancel()
+  renameDebouncers.delete(id)
 }
 
 function fireAndForget(promise: Promise<unknown>): void {
@@ -143,13 +142,12 @@ export const usePagesStore = create<PagesState>((set, get) => ({
       pages: state.pages.map((page) => (page.id === id ? { ...page, title } : page))
     }))
     clearRenameTimer(id)
-    renameTimers.set(
-      id,
-      setTimeout(() => {
-        renameTimers.delete(id)
-        fireAndForget(window.api.pages.rename(id, title))
-      }, AUTOSAVE_DELAY_MS)
-    )
+    const debouncer = createDebouncer(AUTOSAVE_DELAY_MS)
+    renameDebouncers.set(id, debouncer)
+    debouncer.schedule(() => {
+      renameDebouncers.delete(id)
+      fireAndForget(window.api.pages.rename(id, title))
+    })
   },
 
   setPageIcon: (id, icon) => {
