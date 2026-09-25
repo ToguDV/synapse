@@ -6,7 +6,7 @@ const { chromium } = require('./playwright.cjs')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const URL = 'http://localhost:5174/'
+const URL = `http://localhost:${process.env.SYNAPSE_E2E_PORT || 5174}/`
 const MOCK = path.join(__dirname, 'mock-api.js')
 const OUT = path.join(__dirname, '..', 'docs', 'media')
 

@@ -26,6 +26,8 @@
 #   SYNAPSE_E2E_CACHE   directorio de caché (por defecto: .cache/e2e, ignorado por git)
 #   SYNAPSE_SYSROOT     sysroot ya existente que reutilizar (p. ej. /tmp/sysroot)
 #   SYNAPSE_PLAYWRIGHT  la respeta `e2e/playwright.cjs`
+#   SYNAPSE_E2E_PORT    puerto del dev server (por defecto: 5174; se propaga a
+#                       vite con --port y a los runners con la misma variable)
 #
 # En una máquina normal (con fuentes y libs del sistema) todo esto es un no-op:
 # el script comprueba que Chromium arranca y que el texto se mide, y se salta la
@@ -40,8 +42,10 @@ LIBDIR="$SYSROOT/lib"
 FONTDIR="$CACHE/fonts"
 FONTCONF="$CACHE/fonts.conf"
 PORT="${SYNAPSE_E2E_PORT:-5174}"
+export SYNAPSE_E2E_PORT="$PORT"
 URL="http://localhost:$PORT/"
 VITE_LOG="$CACHE/vite.log"
+VITE_STARTED_BY_US=no
 
 RUNNERS=(
   phase3 phase4 phase5 phase6 theme anchor-tracking page-dnd mobile
@@ -158,10 +162,16 @@ const { chromium } = require('$ROOT/e2e/playwright.cjs')
 ;(async () => {
   const browser = await chromium.launch()
   const page = await browser.newPage()
-  await page.setContent('<div id=x style="font-size:24px;line-height:30px">Hola \u00f1and\u00fa</div>')
-  const height = await page.evaluate(
-    () => document.getElementById('x').getBoundingClientRect().height
-  )
+  await page.setContent('<div id=x style="font-size:24px;line-height:normal;font-family:Inter,system-ui,sans-serif">Hola \u00f1and\u00fa</div>')
+  // Medición dependiente de los glifos (no de la caja de línea): con un
+  // line-height fijo el div mediría 30px aun sin fuentes instaladas, así que
+  // la sonda no distinguiría el fallo real (texto con alto 0).
+  const height = await page.evaluate(() => {
+    const el = document.getElementById('x')
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    return range.getBoundingClientRect().height
+  })
   await browser.close()
   console.log('launch=1 text_height=' + Math.round(height))
 })().catch((error) => {
@@ -253,6 +263,28 @@ reuse_sysroot() {
   return 0
 }
 
+# ¿Trae el host fuentes usables sin nuestro sysroot? Sondea Chromium sin los
+# overrides propios de fontconfig: si el texto se mide, no hace falta descargar
+# fonts-liberation (evita depender de apt/red en máquinas normales u offline).
+system_fonts_usable() {
+  local saved_file="${FONTCONFIG_FILE:-}" saved_path="${FONTCONFIG_PATH:-}"
+  unset FONTCONFIG_FILE FONTCONFIG_PATH
+  probe_chromium
+  local usable=1
+  [ "$PROBE_LAUNCH" -eq 1 ] && [ "$PROBE_HEIGHT" -gt 0 ] || usable=0
+  if [ -n "$saved_file" ]; then
+    export FONTCONFIG_FILE="$saved_file"
+  else
+    unset FONTCONFIG_FILE
+  fi
+  if [ -n "$saved_path" ]; then
+    export FONTCONFIG_PATH="$saved_path"
+  else
+    unset FONTCONFIG_PATH
+  fi
+  [ "$usable" -eq 1 ]
+}
+
 # Prepara el sysroot local: descarga (sin root) sólo los paquetes que aportan las
 # libs que falten e itera hasta que no falte ninguna (una lib ausente impide
 # resolver sus propias dependencias, de ahí el bucle).
@@ -341,6 +373,12 @@ prepare_env() {
   if [ -f "$FONTCONF" ] && compgen -G "$FONTDIR/*.ttf" > /dev/null; then
     use_sysroot_env
     note "$(c_ok 'ya están') en $FONTDIR"
+  elif system_fonts_usable; then
+    # El host ya mide texto sin nuestra caché: no descargar nada (no-op en
+    # máquinas normales, sin depender de apt ni de red). Se dejan sin exportar
+    # los overrides de fontconfig para que las suites usen las fuentes del sistema.
+    unset FONTCONFIG_FILE FONTCONFIG_PATH
+    note "$(c_ok 'del sistema') (el texto se mide sin descargar fuentes)"
   else
     if command -v apt-get > /dev/null && command -v dpkg > /dev/null; then
       note "descargando fonts-liberation"
@@ -395,15 +433,32 @@ vite_pid() {
     VITE_BIN="$ROOT/node_modules/.bin/vite" awk 'index($0, ENVIRON["VITE_BIN"]) { print $1; exit }'
 }
 
+# PGID del dev server anclado a NUESTRO comando (config+puerto), no al binario:
+# coincide tanto con el envoltorio npx como con el node final, y no depende de
+# que el puerto ya responda — por eso sirve para limpiar interrupciones durante
+# el arranque, cuando aún no hay nada escuchando. El anclaje viaja por entorno
+# (como en vite_pgid) para que awk no se encuentre a sí mismo; un vite ajeno
+# (otra config u otro puerto) nunca coincide.
+vite_owner_pgid() {
+  VITE_CFG="tests/vite.e2e.config.ts" VITE_PORT="--port $PORT" \
+    ps -eo pgid=,args= --no-headers 2>/dev/null |
+    VITE_CFG="tests/vite.e2e.config.ts" VITE_PORT="--port $PORT" awk '
+      index($0, ENVIRON["VITE_CFG"]) && index($0, ENVIRON["VITE_PORT"]) { print $1; exit }'
+}
+
 # PGID propio: nunca hay que matar el grupo del script ni el de su shell.
 own_pgid() { ps -o pgid= -p "$$" 2>/dev/null | tr -d ' '; }
 
 start_vite() {
   vite_running && return 1
+  # Sin identificadores obsoletos: si esta invocación es interrumpida durante el
+  # arranque, stop_vite debe trabajar con datos frescos de `ps`, nunca con PIDs
+  # reciclados de una ejecución anterior.
+  rm -f "$CACHE/vite.pid" "$CACHE/vite.pgid"
   step "Dev server del renderer (: $PORT)"
   # El root de vite es relativo a cwd (ver tests/vite.e2e.config.ts), no al config.
   # `disown` evita que la shell informe del SIGTERM del proceso al detenerlo.
-  ( cd "$ROOT" && setsid nohup npx vite --config tests/vite.e2e.config.ts \
+  ( cd "$ROOT" && setsid nohup npx vite --config tests/vite.e2e.config.ts --port "$PORT" \
       > "$VITE_LOG" 2>&1 < /dev/null & disown )
   local i pgid pid
   for i in $(seq 1 40); do
@@ -452,15 +507,22 @@ stop_vite() {
     kill -KILL -- "-$pgid" 2>/dev/null
     sleep 1
   fi
-  # Último recurso por binario: sólo se llega aquí si el dev server lo arrancó
-  # este script (el puerto es strictPort, no puede ser el de otra persona).
-  if vite_running; then
-    for pid in $(VITE_BIN="$ROOT/node_modules/.bin/vite" ps -eo pid=,args= --no-headers 2>/dev/null |
-      VITE_BIN="$ROOT/node_modules/.bin/vite" awk 'index($0, ENVIRON["VITE_BIN"]) { print $1 }'); do
-      [ "$pid" = "$$" ] && continue
-      kill -TERM "$pid" 2>/dev/null
-    done
+  # Último recurso por coincidencia de comando (config+puerto): mata al grupo
+  # del que coincida, sea el envoltorio npx o el node final. No depende de que
+  # el puerto ya responda, así que también cubre interrupciones durante el
+  # arranque (cuando aún no hay nada escuchando y los ficheros de PID aún no
+  # existen). El anclaje evita tocar servidores ajenos — al contrario que el
+  # match por binario solo, que los alcanzaba si el puerto respondía.
+  local opgid
+  opgid="$(vite_owner_pgid)"
+  if [ -n "$opgid" ] && [ "$opgid" != "$(own_pgid)" ]; then
+    kill -TERM -- "-$opgid" 2>/dev/null
     sleep 2
+    opgid="$(vite_owner_pgid)"
+  fi
+  if [ -n "$opgid" ] && [ "$opgid" != "$(own_pgid)" ]; then
+    kill -KILL -- "-$opgid" 2>/dev/null
+    sleep 1
   fi
   rm -f "$CACHE/vite.pgid" "$CACHE/vite.pid"
   if vite_running; then
@@ -468,6 +530,17 @@ stop_vite() {
     return 1
   fi
   note "dev server detenido"
+}
+
+# Limpieza para las trampas de run_suites: detiene el dev server sólo si lo
+# arrancó esta invocación (VITE_STARTED_BY_US=yes). Nunca toca un servidor ajeno
+# (start_vite devolvió 1 porque el puerto ya respondía).
+cleanup_owned_vite() {
+  if [ "${VITE_STARTED_BY_US:-no}" = yes ]; then
+    stop_vite || true
+    VITE_STARTED_BY_US=no
+  fi
+  return 0
 }
 
 # -------------------------------------------------------------------- doctor ---
@@ -554,15 +627,17 @@ doctor() {
 # -------------------------------------------------------------------- suites ---
 
 run_suite() {
-  local name="$1" log="$CACHE/$1.log"
+  local name="$1" log="$CACHE/$1.log" rc=0
   printf '%-24s ' "$name"
   if timeout 600 node "$ROOT/e2e/$name.e2e.cjs" > "$log" 2>&1; then
     echo "$(c_ok PASS)"
     return 0
+  else
+    rc=$?
+    echo "$(c_bad "FAIL (rc=$rc)")"
+    tail -8 "$log" | sed 's/^/    /'
+    return 1
   fi
-  echo "$(c_bad "FAIL (rc=$?)")"
-  tail -8 "$log" | sed 's/^/    /'
-  return 1
 }
 
 run_suites() {
@@ -579,17 +654,36 @@ run_suites() {
   fi
 
   prepare_env || return 1
+  VITE_STARTED_BY_US=yes
+  trap cleanup_owned_vite EXIT
+  trap 'cleanup_owned_vite; exit 130' INT
+  trap 'cleanup_owned_vite; exit 143' TERM
   start_vite
   local vite_rc=$?
-  [ "$vite_rc" -eq 2 ] && return 1
-  local started=$([ "$vite_rc" -eq 0 ] && echo yes || echo no)
+  local started=no
+  if [ "$vite_rc" -eq 2 ]; then
+    VITE_STARTED_BY_US=no
+    trap - EXIT INT TERM
+    return 1
+  elif [ "$vite_rc" -eq 0 ]; then
+    started=yes
+  else
+    # El puerto ya respondía: el servidor es ajeno, no detenerlo al salir.
+    VITE_STARTED_BY_US=no
+  fi
 
   step "Suites E2E (${#ordered[@]})"
   for name in "${ordered[@]}"; do
     run_suite "$name" || fail=1
   done
 
-  [ "$started" = yes ] && stop_vite
+  local stop_rc=0
+  if [ "$started" = yes ]; then
+    stop_vite || stop_rc=$?
+    VITE_STARTED_BY_US=no
+  fi
+  trap - EXIT INT TERM
+  [ "$stop_rc" -ne 0 ] && fail=1
 
   if [ "$fail" -eq 0 ]; then
     printf '\n%s\n' "$(c_ok 'Todas las suites han pasado.')"
@@ -603,6 +697,6 @@ case "${1:-all}" in
   doctor) doctor ;;
   env) prepare_env ;;
   all) run_suites ;;
-  -h | --help | help) sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+  -h | --help | help) sed -n '2,33p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
   *) run_suites "$@" ;;
 esac
