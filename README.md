@@ -113,6 +113,23 @@ node e2e/adv-phase4.e2e.cjs && node e2e/adv-selection.e2e.cjs
 docker stop synapse-e2e
 ```
 
+`e2e/run.sh` wraps that whole flow (environment, dev server, suites) and is the
+recommended entry point, especially on machines without Docker or root:
+
+```bash
+./e2e/run.sh doctor          # diagnose deps, Playwright, libs, fonts and dev server
+./e2e/run.sh                 # every suite (starts and stops the dev server itself)
+./e2e/run.sh phase3 mobile   # only the named suites
+```
+
+Suites run sequentially: one browser at a time, so it stays usable on small
+machines. On a bare container (no root, no system fonts) the script builds a
+local environment under `.cache/e2e/` from Debian packages — `apt-get download`
+plus `dpkg -x`, both unprivileged. Chromium needs shared libraries *and* fonts:
+without fonts it still launches, but measures text with height 0, so the suites
+fail with a misleading "element is not visible" while the element exists and has
+content. `./e2e/run.sh doctor` detects exactly that case.
+
 The runners resolve Playwright from the project dependency, the
 `SYNAPSE_PLAYWRIGHT` environment variable or the npm npx cache (in that order):
 
@@ -135,7 +152,7 @@ synapse/
 │     ├─ i18n/         # typed catalogs, t()/tList()
 │     ├─ store/        # zustand stores (pages, theme)
 │     └─ ui/           # sidebar, menus, search, dialogs
-├─ e2e/                # Playwright runners + api mock
+├─ e2e/                # Playwright runners, api mock and run.sh (env + runner)
 ├─ tests/              # Vitest suites
 ├─ benchmarks/         # page-scale stress benchmark
 ├─ design/             # static design-system preview

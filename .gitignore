@@ -3,6 +3,8 @@ data/
 out/
 dist/
 release/
+# Caché local de los E2E (sysroot sin root + fuentes), ver e2e/run.sh
+.cache/
 *.sqlite
 *.sqlite3
 *.db
