@@ -433,11 +433,28 @@ vite_pid() {
     VITE_BIN="$ROOT/node_modules/.bin/vite" awk 'index($0, ENVIRON["VITE_BIN"]) { print $1; exit }'
 }
 
+# PGID del dev server anclado a NUESTRO comando (config+puerto), no al binario:
+# coincide tanto con el envoltorio npx como con el node final, y no depende de
+# que el puerto ya responda — por eso sirve para limpiar interrupciones durante
+# el arranque, cuando aún no hay nada escuchando. El anclaje viaja por entorno
+# (como en vite_pgid) para que awk no se encuentre a sí mismo; un vite ajeno
+# (otra config u otro puerto) nunca coincide.
+vite_owner_pgid() {
+  VITE_CFG="tests/vite.e2e.config.ts" VITE_PORT="--port $PORT" \
+    ps -eo pgid=,args= --no-headers 2>/dev/null |
+    VITE_CFG="tests/vite.e2e.config.ts" VITE_PORT="--port $PORT" awk '
+      index($0, ENVIRON["VITE_CFG"]) && index($0, ENVIRON["VITE_PORT"]) { print $1; exit }'
+}
+
 # PGID propio: nunca hay que matar el grupo del script ni el de su shell.
 own_pgid() { ps -o pgid= -p "$$" 2>/dev/null | tr -d ' '; }
 
 start_vite() {
   vite_running && return 1
+  # Sin identificadores obsoletos: si esta invocación es interrumpida durante el
+  # arranque, stop_vite debe trabajar con datos frescos de `ps`, nunca con PIDs
+  # reciclados de una ejecución anterior.
+  rm -f "$CACHE/vite.pid" "$CACHE/vite.pgid"
   step "Dev server del renderer (: $PORT)"
   # El root de vite es relativo a cwd (ver tests/vite.e2e.config.ts), no al config.
   # `disown` evita que la shell informe del SIGTERM del proceso al detenerlo.
@@ -490,15 +507,22 @@ stop_vite() {
     kill -KILL -- "-$pgid" 2>/dev/null
     sleep 1
   fi
-  # Último recurso por binario: sólo se llega aquí si el dev server lo arrancó
-  # este script (el puerto es strictPort, no puede ser el de otra persona).
-  if vite_running; then
-    for pid in $(VITE_BIN="$ROOT/node_modules/.bin/vite" ps -eo pid=,args= --no-headers 2>/dev/null |
-      VITE_BIN="$ROOT/node_modules/.bin/vite" awk 'index($0, ENVIRON["VITE_BIN"]) { print $1 }'); do
-      [ "$pid" = "$$" ] && continue
-      kill -TERM "$pid" 2>/dev/null
-    done
+  # Último recurso por coincidencia de comando (config+puerto): mata al grupo
+  # del que coincida, sea el envoltorio npx o el node final. No depende de que
+  # el puerto ya responda, así que también cubre interrupciones durante el
+  # arranque (cuando aún no hay nada escuchando y los ficheros de PID aún no
+  # existen). El anclaje evita tocar servidores ajenos — al contrario que el
+  # match por binario solo, que los alcanzaba si el puerto respondía.
+  local opgid
+  opgid="$(vite_owner_pgid)"
+  if [ -n "$opgid" ] && [ "$opgid" != "$(own_pgid)" ]; then
+    kill -TERM -- "-$opgid" 2>/dev/null
     sleep 2
+    opgid="$(vite_owner_pgid)"
+  fi
+  if [ -n "$opgid" ] && [ "$opgid" != "$(own_pgid)" ]; then
+    kill -KILL -- "-$opgid" 2>/dev/null
+    sleep 1
   fi
   rm -f "$CACHE/vite.pgid" "$CACHE/vite.pid"
   if vite_running; then
