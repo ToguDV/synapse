@@ -35,6 +35,11 @@ export const en = {
     current: 'Theme: {{theme}}',
     tooltip: 'Theme: {{theme}}. Click to change'
   },
+  language: {
+    ariaLabel: 'Language',
+    english: 'English',
+    spanish: 'Spanish'
+  },
   pageMenu: {
     rename: 'Rename',
     addSubpage: 'Add subpage',

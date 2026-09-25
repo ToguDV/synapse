@@ -190,7 +190,9 @@ Depth comes from luminance, not shadows. Five levels carry the whole hierarchy:
   36px left / 16px right padding and the top bar hides the Ctrl K chip.
 - **Menus on touch devices** (`pointer: coarse`, i.e. no mouse/trackpad as primary pointer) render
   as bottom sheets: `--surface`, top radius 12px, max 75dvh, 480px max width, 44px rows. With a
-  fine pointer they stay anchored and clamped to the viewport, even in narrow windows.
+  fine pointer they stay anchored and clamped to the viewport, even in narrow windows. Sheets
+  close on backdrop tap, Escape, or a swipe-down from the grabber (`[data-sheet-grabber]`, 64px
+  threshold; ignored while the sheet content is scrolled).
 - **Search** is full-screen on phones (48px sticky input) and a centered 560px palette from 640px.
 - **Gestures**: long-press (450ms) on a to-do checkbox opens the five-state selector (right-click
   on desktop); long-press on a page row opens its menu or, after 8px, drags to reorder; block
@@ -200,6 +202,8 @@ Depth comes from luminance, not shadows. Five levels carry the whole hierarchy:
   `any-pointer: coarse`.
 - **Targets**: sheet rows ≥44px, editor handles ≥32px on touch; controls use
   `touch-action: manipulation` so taps never zoom, while drag handles use `touch-action: none`.
+- **Language**: the sidebar footer pairs the theme segmented control with an EN/ES selector
+  (`[data-locale-toggle]` / `[data-locale-option]`), persisted as the `language` setting.
 - Desktop-only for now: multi-block selection and indent/outdent (no Tab key) have no touch
   alternative yet; see AGENTS.md.
 

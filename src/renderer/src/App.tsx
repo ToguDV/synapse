@@ -4,6 +4,7 @@ import type { RectAnchor } from './editor/types'
 import { useEditorStore } from './editor/editorStore'
 import { useTranslation } from './i18n'
 import { usePagesStore } from './store/pagesStore'
+import { useLocaleStore } from './store/localeStore'
 import { useThemeStore } from './store/themeStore'
 import { Sidebar } from './ui/Sidebar'
 import { BlockList } from './blocks/BlockList'
@@ -40,6 +41,7 @@ function App() {
   const ready = usePagesStore((state) => state.ready)
   const initialize = usePagesStore((state) => state.initialize)
   const initializeTheme = useThemeStore((state) => state.initialize)
+  const initializeLocale = useLocaleStore((state) => state.initialize)
   const pages = usePagesStore((state) => state.pages)
   const activePageId = usePagesStore((state) => state.activePageId)
   const selectPage = usePagesStore((state) => state.selectPage)
@@ -72,6 +74,10 @@ function App() {
   useEffect(() => {
     void initializeTheme()
   }, [initializeTheme])
+
+  useEffect(() => {
+    void initializeLocale()
+  }, [initializeLocale])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

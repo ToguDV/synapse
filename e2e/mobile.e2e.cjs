@@ -425,6 +425,45 @@ async function main() {
     await page.waitForTimeout(250)
     const paletteGone = (await page.locator('[data-search-palette]').count()) === 0
     check(steps, 'C14 Esc cierra la búsqueda', paletteGone)
+
+    // Swipe-down en el agarre cierra el sheet.
+    const reopenHandle = await boxOf(page, '[data-row-id="k2"] [data-block-handle]')
+    await page
+      .locator('[data-row-id="k2"] [data-block-handle]')
+      .tap({ position: { x: reopenHandle.width / 2, y: reopenHandle.height / 2 } })
+    await page.waitForTimeout(250)
+    const grabber = await boxOf(page, '[data-sheet-grabber]')
+    check(steps, 'C15 el sheet reabre para el gesto', grabber && grabber.width > 0)
+    const gx = grabber.x + grabber.width / 2
+    const gy = grabber.y + grabber.height / 2
+    await dispatchOn(page, '[data-sheet-grabber]', 'pointerdown', gx, gy)
+    await dispatchWindow(page, 'pointermove', gx, gy + 110)
+    await dispatchWindow(page, 'pointerup', gx, gy + 110)
+    await page.waitForTimeout(300)
+    const sheetGone = (await page.locator('[data-sheet="block-menu"]').count()) === 0
+    check(steps, 'C16 swipe-down en el agarre cierra el sheet', sheetGone)
+
+    // Selector de idioma en el footer del drawer.
+    await openDrawer(page)
+    await page.tap('[data-locale-option="es"]')
+    await page.waitForTimeout(400)
+    const locale = await page.getAttribute('[data-locale-toggle]', 'data-locale')
+    check(steps, 'C17 cambiar a español actualiza el toggle', locale === 'es', { locale })
+    const htmlLang = await page.evaluate(() => document.documentElement.lang)
+    const newPageTitle = await page.getAttribute('[data-page-action="new-root"]', 'title')
+    check(
+      steps,
+      'C18 el español se aplica a la UI',
+      htmlLang === 'es' && newPageTitle === 'Nueva página',
+      { htmlLang, newPageTitle }
+    )
+    const langStored = (await state(page)).settings.language
+    check(steps, 'C19 el idioma persiste en settings', langStored === 'es', { langStored })
+    await page.tap('[data-locale-option="en"]')
+    await page.waitForTimeout(400)
+    const backToEn = await page.getAttribute('[data-locale-toggle]', 'data-locale')
+    check(steps, 'C20 volver a inglés restaura la UI', backToEn === 'en', { backToEn })
+    await closeDrawer(page)
     const snap = await state(page)
   })
 

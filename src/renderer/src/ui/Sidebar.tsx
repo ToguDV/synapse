@@ -12,9 +12,11 @@ import {
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent
 } from 'react'
+import type { LanguagePreference } from '../../../shared/language'
 import type { ThemePreference } from '../../../shared/theme'
 import type { RectAnchor } from '../editor/types'
 import { useTranslation, type MessageKey } from '../i18n'
+import { useLocaleStore } from '../store/localeStore'
 import { usePagesStore } from '../store/pagesStore'
 import { useThemeStore } from '../store/themeStore'
 import {
@@ -34,6 +36,7 @@ import { useIsMobile } from './useMediaQuery'
 import { usePageDrag, type PageDropTarget } from './usePageDrag'
 
 const THEME_OPTIONS: ThemePreference[] = ['system', 'light', 'dark']
+const LANGUAGE_OPTIONS: LanguagePreference[] = ['en', 'es']
 const PAGE_ROW_HEIGHT = 30
 const PAGE_ROW_OVERSCAN = 8
 const INITIAL_PAGE_VIEWPORT_HEIGHT = 480
@@ -84,6 +87,36 @@ function ThemeSegmented() {
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function LanguageSegmented() {
+  const { t } = useTranslation()
+  const locale = useLocaleStore((state) => state.locale)
+  const setLocalePreference = useLocaleStore((state) => state.setLocalePreference)
+
+  return (
+    <div
+      data-locale-toggle
+      data-locale={locale}
+      role="group"
+      aria-label={t('language.ariaLabel')}
+      className="inline-flex gap-0.5 rounded-[9px] border border-border bg-hover p-0.5"
+    >
+      {LANGUAGE_OPTIONS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          data-locale-option={option}
+          aria-pressed={option === locale}
+          title={option === 'en' ? t('language.english') : t('language.spanish')}
+          onClick={() => setLocalePreference(option)}
+          className="flex h-[26px] min-w-[34px] items-center justify-center rounded-md px-1.5 text-[11px] font-semibold text-muted transition hover:text-ink aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-[0_1px_3px_rgb(0_0_0/0.18)]"
+        >
+          {option.toUpperCase()}
+        </button>
+      ))}
     </div>
   )
 }
@@ -650,11 +683,14 @@ export function Sidebar({
           aria-label={t('sidebar.search')}
           title={t('sidebar.searchTooltip')}
           onClick={onOpenSearch}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-hover hover:text-ink"
         >
           <Icon name="search" size={15} />
         </button>
-        <ThemeSegmented />
+        <div className="flex min-w-0 items-center gap-1.5">
+          <LanguageSegmented />
+          <ThemeSegmented />
+        </div>
       </div>
     </aside>
   )
