@@ -9,7 +9,9 @@ export default defineConfig({
   root: resolve(process.cwd(), 'src/renderer'),
   plugins: [react(), tailwindcss()],
   server: {
-    port: 5174,
+    // Respeta SYNAPSE_E2E_PORT para que e2e/run.sh pueda mover el puerto
+    // (lo propaga con --port y con la variable); por defecto 5174.
+    port: Number(process.env.SYNAPSE_E2E_PORT ?? 5174),
     strictPort: true
   }
 })
